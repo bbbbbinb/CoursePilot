@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="课程知识库 Agent 助教：带页码引用的课程问答">
+  <title>CoursePilot · 课程知识库助教</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%233653d8'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia' font-size='18' fill='white'%3EC%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="知识库">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">C</div>
+        <div class="brand-text">
+          <strong>CoursePilot</strong>
+          <span>课程知识库助教</span>
+        </div>
+        <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="关闭侧栏">×</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-head">
+          <span>知识库</span>
+          <span class="count" id="docCount">0 份</span>
+        </div>
+
+        <label class="dropzone" id="dropzone" for="fileInput">
+          <input type="file" id="fileInput" accept=".pdf,.md,.txt" multiple hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span class="drop-title">上传课程资料</span>
+          <span class="drop-hint">拖拽或点击 · PDF / MD / TXT</span>
+        </label>
+
+        <ul class="doc-list" id="docList"></ul>
+        <p class="doc-empty" id="docEmpty">还没有资料。先上传一份讲义试试。</p>
+      </div>
+
+      <div class="sidebar-foot">
+        <div class="status-row">
+          <span class="status-dot" id="healthDot"></span>
+          <span id="healthText">正在检测后端…</span>
+        </div>
+        <p>回答会标注来源页码；资料不足时会明确拒答。</p>
+      </div>
+    </aside>
+
+    <div class="backdrop" id="backdrop"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="打开知识库">☰</button>
+        <div class="topbar-title">
+          <h1>课程问答</h1>
+          <p id="sessionLabel">新会话</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="ghost-btn" id="settingsBtn" aria-expanded="false">检索设置</button>
+          <button class="ghost-btn" id="newChatBtn">新会话</button>
+        </div>
+      </header>
+
+      <div class="chat-scroll" id="chatScroll">
+        <div class="messages" id="messages">
+          <section class="welcome" id="welcome">
+            <div class="welcome-mark" aria-hidden="true">C</div>
+            <p class="eyebrow">RETRIEVAL · GROUNDED · CITED</p>
+            <h2>从你的课程资料里找答案</h2>
+            <p class="welcome-copy">
+              资料会被切分、索引，再作为上下文交给模型。每个回答都能追到原文页码，
+              找不到依据时它会直接告诉你。
+            </p>
+            <div class="suggestions" id="suggestions">
+              <button class="suggestion" type="button">递归和迭代的区别是什么？</button>
+              <button class="suggestion" type="button">这门课的考试重点有哪些？</button>
+              <button class="suggestion" type="button">帮我根据第三章制定一个复习计划</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="composer">
+          <textarea id="input" rows="1" maxlength="2000"
+            placeholder="问点什么…（Enter 发送，Shift + Enter 换行）"
+            aria-label="输入问题"></textarea>
+          <button class="send-btn" id="sendBtn" type="submit" aria-label="发送问题">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 19V5m0 0l-6 6m6-6l6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </form>
+        <div class="composer-meta">
+          <span id="composerHint">检索 top 4 · 流式回答</span>
+          <span class="demo-hint" id="demoHint" hidden>演示模式：未连接后端</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <div class="popover" id="settingsPop" hidden>
+    <div class="popover-head">
+      <strong>检索设置</strong>
+      <button class="icon-btn" id="settingsClose" aria-label="关闭设置">×</button>
+    </div>
+    <label class="setting-row">
+      <span>召回片段数 <em id="topKValue">4</em></span>
+      <input type="range" id="topK" min="1" max="8" step="1" value="4">
+    </label>
+    <label class="setting-row check-row">
+      <input type="checkbox" id="showSources" checked>
+      <span>显示引用来源</span>
+    </label>
+    <p class="setting-note">片段越多上下文越全，但 token 成本也越高。</p>
+  </div>
+
+  <div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
