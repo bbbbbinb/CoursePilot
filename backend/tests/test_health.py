@@ -1,0 +1,98 @@
+import json
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
+client = TestClient(app)
+
+
+def parse_sse(text: str) -> list[tuple[str, dict]]:
+    """解析测试响应中的 SSE 帧，返回事件名和 JSON 数据。"""
+    events: list[tuple[str, dict]] = []
+    for block in text.split("\n\n"):
+        if not block.strip():
+            continue
+
+        event_name = "message"
+        data_lines: list[str] = []
+        for line in block.splitlines():
+            if line.startswith("event:"):
+                event_name = line.removeprefix("event:").strip()
+            elif line.startswith("data:"):
+                data_lines.append(line.removeprefix("data:").lstrip())
+
+        if data_lines:
+            events.append((event_name, json.loads("\n".join(data_lines))))
+    return events
+
+
+def test_health_returns_ok_without_api_key() -> None:
+    response = client.get("/api/v1/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_unknown_api_does_not_return_frontend_html() -> None:
+    response = client.get("/api/v1/does-not-exist")
+
+    assert response.status_code == 404
+    assert "text/html" not in response.headers["content-type"]
+    assert response.json()["detail"].startswith("API endpoint not found")
+
+
+def test_root_serves_frontend() -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "<html" in response.text.lower()
+
+
+def test_document_upload_is_explicitly_not_implemented() -> None:
+    response = client.post(
+        "/api/v1/documents",
+        files={"file": ("lecture.txt", "课程讲义".encode(), "text/plain")},
+    )
+
+    assert response.status_code == 501
+    assert response.json() == {"detail": "入库功能待实现"}
+
+
+def test_document_upload_rejects_unsupported_file_type() -> None:
+    response = client.post(
+        "/api/v1/documents",
+        files={"file": ("archive.zip", b"not-a-course-document", "application/zip")},
+    )
+
+    assert response.status_code == 415
+    assert "仅支持 PDF、Markdown 和 TXT" in response.json()["detail"]
+
+
+def test_chat_returns_placeholder_sse_without_fake_sources() -> None:
+    response = client.post(
+        "/api/v1/chat",
+        json={
+            "session_id": "test-session",
+            "question": "递归是什么？",
+            "top_k": 4,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    events = parse_sse(response.content.decode("utf-8"))
+    event_names = [name for name, _ in events]
+    token_text = "".join(
+        payload["text"] for name, payload in events if name == "token"
+    )
+    sources = next(payload for name, payload in events if name == "sources")
+
+    assert event_names[0] == "meta"
+    assert event_names[-1] == "done"
+    assert sources == {"sources": []}
+    assert "后端骨架已连通" in token_text
+    assert "RAG 尚未接入" in token_text
+    assert "[1]" not in token_text
