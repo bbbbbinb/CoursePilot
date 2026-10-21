@@ -1,5 +1,7 @@
 from langchain_text_splitters import CharacterTextSplitter,MarkdownHeaderTextSplitter
+from langchain_community.embeddings import DashScopeEmbeddings
 from mineru import MinerU
+import numpy as np
 from dotenv import load_dotenv
 import os
 load_dotenv()
@@ -28,3 +30,16 @@ Markdown_splitter = MarkdownHeaderTextSplitter(
 )
 # 切分文档，接收str，返回值是list[Document]
 chunks = Markdown_splitter.split_text(result)
+
+# ==========文本嵌入模型向量化==========　
+embeddings = DashScopeEmbeddings(
+    model="text-embedding-v4",
+)
+
+vectors = embeddings.embed_documents(chunks)
+print(f"\n批量向量化: {len(vectors)} 条, 维度: {len(vectors[0])}")
+
+def cosine_similarity(vec1, vec2):
+    """余弦相似度函数"""
+    dot = np.dot(vec1, vec2)
+    return dot / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
