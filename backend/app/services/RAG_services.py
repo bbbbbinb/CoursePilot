@@ -1,7 +1,8 @@
 from langchain_text_splitters import CharacterTextSplitter,MarkdownHeaderTextSplitter
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_core.vectorstores import InMemoryVectorStore,VectorStore
+from langchain_chroma import Chroma
 from mineru import MinerU
 from pathlib import Path
 import numpy as np
@@ -65,14 +66,21 @@ def cosine_similarity(vec1, vec2):
     """余弦相似度函数"""
     dot = np.dot(vec1, vec2)
     return dot / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-
+#模型加载
 settings = get_settings()
 embeddings = DashScopeEmbeddings(
     model=settings.embedding_model,
     dashscope_api_key=settings.dashscope_api_key,
 )
-vector_store = InMemoryVectorStore(embedding=embeddings)
+#chroma
+vector_store: VectorStore = Chroma(
+    collection_name="coursepilot",
+    embedding_function=embeddings,
+    persist_directory=str(settings.chroma_dir),
+)
 #    # 保存文档到向量数据库
 #    ids = vector_store.add_documents(docs)
 #    # 删除旧文档
 #    vector_store.delete(["doc_1", "doc_2"])
+#    # 相似度搜索
+#    vector_store.similarity_search(query, k=4)
