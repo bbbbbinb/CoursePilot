@@ -1,6 +1,7 @@
 from langchain_text_splitters import CharacterTextSplitter,MarkdownHeaderTextSplitter
 from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_core.documents import Document
+from langchain_core.vectorstores import InMemoryVectorStore
 from mineru import MinerU
 from pathlib import Path
 import numpy as np
@@ -47,18 +48,24 @@ def split_markdown(markdown: str) -> list[Document]:
     # 切分文档，接收str，返回值是list[Document]
     chunks = Markdown_splitter.split_text(markdown)
     #texts = [chunk.page_content for chunk in chunks]
-    return chunks   #list[Document]
+    return chunks   #list[Document] ->下一步：ids = vector_store.add_documents(docs)
 
-def embed_chunks(chunks:list[Document]) -> list[list[float]]:
-    """文本嵌入模型向量化"""
-    texts = [chunk.page_content for chunk in chunks]
-    embeddings = DashScopeEmbeddings(
-        model="text-embedding-v4",
-    )
-    vectors = embeddings.embed_documents(texts)
-    return vectors
+#    def embed_chunks(chunks:list[Document]) -> list[list[float]]:
+#        """文本嵌入模型向量化"""
+#        texts = [chunk.page_content for chunk in chunks]
+#        embeddings = DashScopeEmbeddings(
+#            model="text-embedding-v4",
+#        )
+#        vectors = embeddings.embed_documents(texts)
+#        return vectors
 
 def cosine_similarity(vec1, vec2):
     """余弦相似度函数"""
     dot = np.dot(vec1, vec2)
     return dot / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
+vector_store = InMemoryVectorStore(embedding=DashScopeEmbeddings)
+#    # 保存文档到向量数据库
+#    ids = vector_store.add_documents(docs)
+#    # 删除旧文档
+#    vector_store.delete(["doc_1", "doc_2"])
