@@ -5,3 +5,4 @@ __pycache__/
 data/chroma/
 data/uploads/
 .pytest_cache/
+.vscode

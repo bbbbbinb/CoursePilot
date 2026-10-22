@@ -1,6 +1,5 @@
 from functools import lru_cache
 from pathlib import Path
-
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
-    """应用配置，统一从项目根目录的 .env 和环境变量读取。"""
+    """应用配置，统一管理，统一从项目根目录的 .env 和环境变量读取。"""
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
@@ -22,7 +21,8 @@ class Settings(BaseSettings):
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_chat_model: str = "deepseek-chat"
-    embedding_model: str = "BAAI/bge-small-zh-v1.5"
+    dashscope_api_key: str | None = None
+    embedding_model: str = "text-embedding-v4"
     chroma_dir: Path = PROJECT_ROOT / "data" / "chroma"
     top_k: int = Field(default=4, ge=1, le=20)
 

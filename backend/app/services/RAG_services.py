@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+from app.core.config import get_settings
+
 def loader(file_path: str | Path) -> str:
     """文档加载器"""
     path = Path(file_path).expanduser().resolve()
@@ -64,7 +66,12 @@ def cosine_similarity(vec1, vec2):
     dot = np.dot(vec1, vec2)
     return dot / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
-vector_store = InMemoryVectorStore(embedding=DashScopeEmbeddings)
+settings = get_settings()
+embeddings = DashScopeEmbeddings(
+    model=settings.embedding_model,
+    dashscope_api_key=settings.dashscope_api_key,
+)
+vector_store = InMemoryVectorStore(embedding=embeddings)
 #    # 保存文档到向量数据库
 #    ids = vector_store.add_documents(docs)
 #    # 删除旧文档
