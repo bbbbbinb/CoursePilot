@@ -1,14 +1,18 @@
 import asyncio
 import json
 import time
+import shutil
+import tempfile
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.core.config import get_settings
 from app.schemas import ChatRequest, HealthResponse
+from app.services.RAG_services import loader, split_markdown,vector_store
 
 router = APIRouter(prefix="/api/v1")
 
@@ -45,6 +49,43 @@ async def validate_upload(file: UploadFile) -> None:
     if total_bytes == 0:
         raise HTTPException(status_code=400, detail="不能上传空文件")
 
+async def save_upload_to_temp(file: UploadFile) -> Path:
+    """把上传文件保存到系统临时目录，并返回临时路径。"""
+    if not file.filename:
+        raise ValueError("缺少文件名")
+
+    suffix = Path(file.filename).suffix.lower()
+
+    # delete=False 表示文件关闭后仍保留，后续交给 MinerU/Chroma 处理
+    with tempfile.NamedTemporaryFile(
+        prefix="coursepilot-",
+        suffix=suffix,
+        delete=False,
+    ) as temp_file:
+        temp_path = Path(temp_file.name)
+
+        # validate_upload() 已经 seek(0)，这里再复位一次更稳妥
+        await file.seek(0)
+
+        # copyfileobj 是同步文件操作，放到线程池中执行
+        await run_in_threadpool(
+            shutil.copyfileobj,
+            file.file,
+            temp_file,
+        )
+
+    return temp_path
+
+def extract_document(file_path: Path) -> str:
+    if file_path.suffix.lower() == ".pdf":
+        return loader(file_path)
+
+    if file_path.suffix.lower() in {".md", ".txt"}:
+        return file_path.read_text(encoding="utf-8-sig")
+
+    raise ValueError(f"不支持的文件类型：{file_path.suffix}")
+
+
 
 @router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
@@ -54,9 +95,27 @@ async def health() -> HealthResponse:
 
 @router.post("/documents")
 async def upload_document(file: UploadFile = File(...)) -> None:
-    """上传接口占位：完成校验后明确返回 501，不伪造入库成功。"""
-    await validate_upload(file)
-    raise HTTPException(status_code=501, detail="入库功能待实现")
+    """文档上传接口"""
+    temp_path: Path | None = None
+    try:
+        await validate_upload(file)
+        #1 将文件保存tmp文件夹
+        suffix = Path(file.filename).suffix.lower()
+        temp_path = await save_upload_to_temp(file)
+        #2 文档加载
+        markdown = await run_in_threadpool(extract_document, temp_path)
+        #3 文本切分
+        chunks = split_markdown(markdown)
+        if not chunks:
+            raise HTTPException(status_code=400, detail="文档没有可入库内容")
+        #4 向量化并存入数据库
+        await run_in_threadpool(vector_store.add_documents,chunks)
+    finally:
+        # 5. 删除临时文件
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+        await file.close()
 
 
 @router.post("/chat")
