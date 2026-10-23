@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
-    deepseek_chat_model: str = "deepseek-chat"
+    deepseek_chat_model: str = "deepseek-flash"
     dashscope_api_key: str | None = None
     embedding_model: str = "text-embedding-v4"
     chroma_dir: Path = PROJECT_ROOT / "data" / "chroma"

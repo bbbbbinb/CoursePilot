@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
+from typing import Literal
 
 
 class HealthResponse(BaseModel):
@@ -18,3 +19,9 @@ class ChatRequest(BaseModel):
         if not value:
             raise ValueError("字段不能为空")
         return value
+
+class DocumentUploadResponse(BaseModel):
+    doc_id: str
+    file_name: str
+    chunks: int
+    status: Literal["ready"]

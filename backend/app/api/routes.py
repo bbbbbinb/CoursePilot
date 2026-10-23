@@ -5,13 +5,14 @@ import shutil
 import tempfile
 from collections.abc import AsyncIterator
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.core.config import get_settings
-from app.schemas import ChatRequest, HealthResponse
+from app.schemas import ChatRequest, DocumentUploadResponse, HealthResponse
 from app.services.RAG_services import loader, split_markdown,vector_store
 
 router = APIRouter(prefix="/api/v1")
@@ -93,14 +94,15 @@ async def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
-@router.post("/documents")
-async def upload_document(file: UploadFile = File(...)) -> None:
+@router.post("/documents",
+            response_model=DocumentUploadResponse,
+            status_code=201,)
+async def upload_document(file: UploadFile = File(...)) -> DocumentUploadResponse:
     """文档上传接口"""
     temp_path: Path | None = None
     try:
         await validate_upload(file)
         #1 将文件保存tmp文件夹
-        suffix = Path(file.filename).suffix.lower()
         temp_path = await save_upload_to_temp(file)
         #2 文档加载
         markdown = await run_in_threadpool(extract_document, temp_path)
@@ -109,7 +111,35 @@ async def upload_document(file: UploadFile = File(...)) -> None:
         if not chunks:
             raise HTTPException(status_code=400, detail="文档没有可入库内容")
         #4 向量化并存入数据库
-        await run_in_threadpool(vector_store.add_documents,chunks)
+        doc_id = uuid4().hex
+        chunk_ids = [
+            f"{doc_id}:{index:04d}"
+            for index in range(len(chunks))
+        ]
+
+        for index, chunk in enumerate(chunks):
+            chunk.metadata.update(
+                {
+                    "doc_id": doc_id,
+                    "chunk_id": chunk_ids[index],
+                    "chunk_index": index,
+                    "file_name": file.filename,
+                    "source": file.filename,
+                }
+            )
+
+        await run_in_threadpool(
+            vector_store.add_documents,
+            chunks,
+            ids=chunk_ids,
+        )
+
+        return DocumentUploadResponse(
+            doc_id=doc_id,
+            file_name=file.filename,
+            chunks=len(chunks),
+            status="ready",
+        )
     finally:
         # 5. 删除临时文件
         if temp_path is not None:
