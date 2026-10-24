@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 
 from app.core.config import get_settings
 from app.schemas import ChatRequest, DocumentUploadResponse, HealthResponse
-from app.services.RAG_services import loader, split_markdown,vector_store
+from app.services.RAG_services import loader, split_markdown,get_vector_store
 
 router = APIRouter(prefix="/api/v1")
 
@@ -127,7 +127,7 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentUploadRespons
                     "source": file.filename,
                 }
             )
-
+        vector_store = await run_in_threadpool(get_vector_store)
         await run_in_threadpool(
             vector_store.add_documents,
             chunks,

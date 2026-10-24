@@ -4,6 +4,7 @@ from langchain_core.documents import Document
 from langchain_core.vectorstores import InMemoryVectorStore,VectorStore
 from langchain_chroma import Chroma
 from mineru import MinerU
+from functools import lru_cache
 from pathlib import Path
 import numpy as np
 from dotenv import load_dotenv
@@ -66,18 +67,21 @@ def cosine_similarity(vec1, vec2):
     """余弦相似度函数"""
     dot = np.dot(vec1, vec2)
     return dot / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-#模型加载
-settings = get_settings()
-embeddings = DashScopeEmbeddings(
-    model=settings.embedding_model,
-    dashscope_api_key=settings.dashscope_api_key,
-)
-#chroma
-vector_store: VectorStore = Chroma(
-    collection_name="coursepilot",
-    embedding_function=embeddings,
-    persist_directory=str(settings.chroma_dir),
-)
+
+@lru_cache
+def get_vector_store() -> Chroma:
+    """第一次需要时再创建并复用 Chroma 实例。"""
+    settings = get_settings()
+    embeddings = DashScopeEmbeddings(
+        model=settings.embedding_model,
+        dashscope_api_key=settings.dashscope_api_key,
+    )
+    return Chroma(
+        collection_name="coursepilot",
+        embedding_function=embeddings,
+        persist_directory=str(settings.chroma_dir),
+    )
+
 #    # 保存文档到向量数据库
 #    ids = vector_store.add_documents(docs)
 #    # 删除旧文档
