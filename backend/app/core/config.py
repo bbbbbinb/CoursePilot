@@ -30,9 +30,10 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("MINERU_API_KEY", "MINERU_TOKEN"),
     )
     mineru_api_url: str = "https://mineru.net/api"
-    mineru_tier: Literal["flash", "basic", "standard", "advanced"] = "flash"
+    mineru_tier: Literal["flash", "basic", "standard", "advanced"] = "standard"
     chroma_dir: Path = PROJECT_ROOT / "data" / "chroma"
     top_k: int = Field(default=4, ge=1, le=20)
+    retrieval_max_distance: float = Field(default=1.1, gt=0)
 
     @field_validator("chroma_dir")
     @classmethod
