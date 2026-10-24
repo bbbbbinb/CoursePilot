@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import time
 import shutil
 import tempfile
@@ -14,8 +15,10 @@ from fastapi.responses import StreamingResponse
 from app.core.config import get_settings
 from app.schemas import ChatRequest, DocumentUploadResponse, HealthResponse
 from app.services.RAG_services import loader, split_markdown,get_vector_store
+from app.services.rag_chat import stream_rag_answer
 
 router = APIRouter(prefix="/api/v1")
+logger = logging.getLogger(__name__)
 
 ALLOWED_SUFFIXES = {".pdf", ".md", ".txt"}
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -150,29 +153,33 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentUploadRespons
 
 @router.post("/chat")
 async def chat(body: ChatRequest) -> StreamingResponse:
-    """返回明确的占位 SSE 流，用于联调前端解析器。"""
+    """基于课程知识库流式生成回答。"""
     settings = get_settings()
     effective_top_k = body.top_k or settings.top_k
-    placeholder_text = (
-        "后端骨架已连通，RAG 尚未接入。"
-        f"当前仅用于验证 SSE 流式解析，已收到 top_k={effective_top_k}。"
-    )
 
     async def generate() -> AsyncIterator[str]:
         started_at = time.perf_counter()
 
-        # 不发送任何虚构来源；空列表表示当前还没有检索结果。
         yield sse_event("meta", {"session_id": body.session_id})
-        yield sse_event("sources", {"sources": []})
 
-        # 分成多段发送，便于确认浏览器按 token 事件增量渲染。
-        chunk_size = 12
-        for start in range(0, len(placeholder_text), chunk_size):
-            yield sse_event(
-                "token",
-                {"text": placeholder_text[start : start + chunk_size]},
+        try:
+            async for event, payload in stream_rag_answer(
+                body.question,
+                effective_top_k,
+            ):
+                yield sse_event(event, payload)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception(
+                "RAG chat failed for session %s",
+                body.session_id,
             )
-            await asyncio.sleep(0.03)
+            yield sse_event(
+                "error",
+                {"message": "回答生成失败，请稍后重试。"},
+            )
+            return
 
         latency_ms = int((time.perf_counter() - started_at) * 1000)
         yield sse_event("done", {"latency_ms": latency_ms})

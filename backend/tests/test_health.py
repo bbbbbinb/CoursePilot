@@ -104,13 +104,33 @@ def test_document_upload_rejects_unsupported_file_type() -> None:
     assert "仅支持 PDF、Markdown 和 TXT" in response.json()["detail"]
 
 
-def test_chat_returns_placeholder_sse_without_fake_sources() -> None:
+def test_chat_streams_sources_tokens_and_done(monkeypatch) -> None:
+    captured: dict = {}
+
+    async def fake_stream(question: str, top_k: int):
+        captured["question"] = question
+        captured["top_k"] = top_k
+        yield "sources", {
+            "sources": [
+                {
+                    "index": 1,
+                    "file_name": "递归讲义.md",
+                    "page": 1,
+                    "snippet": "递归函数需要基准情形。",
+                }
+            ]
+        }
+        yield "token", {"text": "递归需要基准情形 [1]。"}
+        yield "token", {"text": "否则会无限调用。"}
+
+    monkeypatch.setattr(routes, "stream_rag_answer", fake_stream)
+
     response = client.post(
         "/api/v1/chat",
         json={
             "session_id": "test-session",
-            "question": "递归是什么？",
-            "top_k": 4,
+            "question": "递归为什么需要基准情形？",
+            "top_k": 2,
         },
     )
 
@@ -122,10 +142,63 @@ def test_chat_returns_placeholder_sse_without_fake_sources() -> None:
         payload["text"] for name, payload in events if name == "token"
     )
     sources = next(payload for name, payload in events if name == "sources")
+    done = next(payload for name, payload in events if name == "done")
 
-    assert event_names[0] == "meta"
-    assert event_names[-1] == "done"
-    assert sources == {"sources": []}
-    assert "后端骨架已连通" in token_text
-    assert "RAG 尚未接入" in token_text
-    assert "[1]" not in token_text
+    assert captured == {
+        "question": "递归为什么需要基准情形？",
+        "top_k": 2,
+    }
+    assert event_names == ["meta", "sources", "token", "token", "done"]
+    assert events[0][1] == {"session_id": "test-session"}
+    assert sources["sources"][0]["index"] == 1
+    assert token_text == "递归需要基准情形 [1]。否则会无限调用。"
+    assert done["latency_ms"] >= 0
+
+
+def test_chat_streams_refusal_and_done(monkeypatch) -> None:
+    async def fake_stream(question: str, top_k: int):
+        yield "sources", {"sources": []}
+        yield "refusal", {"reason": "课程资料不足以回答该问题。"}
+
+    monkeypatch.setattr(routes, "stream_rag_answer", fake_stream)
+
+    response = client.post(
+        "/api/v1/chat",
+        json={
+            "session_id": "test-session",
+            "question": "明天杭州天气怎么样？",
+            "top_k": 4,
+        },
+    )
+    events = parse_sse(response.content.decode("utf-8"))
+
+    assert [name for name, _ in events] == [
+        "meta",
+        "sources",
+        "refusal",
+        "done",
+    ]
+    assert events[2][1] == {"reason": "课程资料不足以回答该问题。"}
+
+
+def test_chat_returns_error_without_done_when_generation_fails(
+    monkeypatch,
+) -> None:
+    async def fake_stream(question: str, top_k: int):
+        yield "sources", {"sources": []}
+        raise RuntimeError("模型请求失败")
+
+    monkeypatch.setattr(routes, "stream_rag_answer", fake_stream)
+
+    response = client.post(
+        "/api/v1/chat",
+        json={
+            "session_id": "test-session",
+            "question": "递归是什么？",
+            "top_k": 4,
+        },
+    )
+    events = parse_sse(response.content.decode("utf-8"))
+
+    assert [name for name, _ in events] == ["meta", "sources", "error"]
+    assert events[-1][1] == {"message": "回答生成失败，请稍后重试。"}
