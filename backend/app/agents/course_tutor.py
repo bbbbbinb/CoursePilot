@@ -1,6 +1,6 @@
 from langchain.agents import create_agent
 from langchain.tools import tool
-from app.services.RAG_services import vector_store
+from app.services.RAG_services import get_vector_store
 from langchain.chat_models import init_chat_model
 from dotenv import load_dotenv
 load_dotenv()
@@ -9,6 +9,7 @@ load_dotenv()
 def retrieve_docs(query: str):
     """检索知识库，返回相关结果"""
     # 1.根据问题检索知识片段
+    vector_store = get_vector_store()
     documents = vector_store.similarity_search(query)
     # 2.拼接知识片段
     context = "\n".join([doc.page_content for doc in documents])

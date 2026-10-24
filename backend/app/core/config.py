@@ -1,6 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import Field, field_validator
+from typing import Literal
+
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +25,12 @@ class Settings(BaseSettings):
     deepseek_chat_model: str = "deepseek-flash"
     dashscope_api_key: str | None = None
     embedding_model: str = "text-embedding-v4"
+    mineru_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MINERU_API_KEY", "MINERU_TOKEN"),
+    )
+    mineru_api_url: str = "https://mineru.net/api"
+    mineru_tier: Literal["flash", "basic", "standard", "advanced"] = "flash"
     chroma_dir: Path = PROJECT_ROOT / "data" / "chroma"
     top_k: int = Field(default=4, ge=1, le=20)
 

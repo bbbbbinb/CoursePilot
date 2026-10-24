@@ -1,7 +1,9 @@
 import json
 
 from fastapi.testclient import TestClient
+from langchain_core.documents import Document
 
+from app.api import routes
 from app.main import app
 
 
@@ -51,14 +53,45 @@ def test_root_serves_frontend() -> None:
     assert "<html" in response.text.lower()
 
 
-def test_document_upload_is_explicitly_not_implemented() -> None:
+def test_document_upload_indexes_chunks(monkeypatch) -> None:
+    captured: dict = {}
+
+    class FakeVectorStore:
+        def add_documents(self, documents, ids):
+            captured["documents"] = documents
+            captured["ids"] = ids
+
+    monkeypatch.setattr(
+        routes,
+        "split_markdown",
+        lambda markdown: [
+            Document(
+                page_content=markdown.strip(),
+                metadata={"Header 1": "课程讲义"},
+            )
+        ],
+    )
+    monkeypatch.setattr(routes, "get_vector_store", lambda: FakeVectorStore())
+
     response = client.post(
         "/api/v1/documents",
-        files={"file": ("lecture.txt", "课程讲义".encode(), "text/plain")},
+        files={
+            "file": (
+                "lecture.txt",
+                "# 课程讲义\n递归需要基准情形。".encode(),
+                "text/plain",
+            )
+        },
     )
 
-    assert response.status_code == 501
-    assert response.json() == {"detail": "入库功能待实现"}
+    assert response.status_code == 201
+    assert response.json()["file_name"] == "lecture.txt"
+    assert response.json()["chunks"] == 1
+    assert len(captured["documents"]) == 1
+    assert captured["documents"][0].metadata["doc_id"] == response.json()["doc_id"]
+    assert captured["ids"] == [
+        f"{response.json()['doc_id']}:0000",
+    ]
 
 
 def test_document_upload_rejects_unsupported_file_type() -> None:

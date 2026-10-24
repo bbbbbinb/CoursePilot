@@ -3,15 +3,27 @@ from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_core.documents import Document
 from langchain_core.vectorstores import InMemoryVectorStore,VectorStore
 from langchain_chroma import Chroma
-from mineru import MinerU
+from mineru import MinerUApiParser
 from functools import lru_cache
 from pathlib import Path
 import numpy as np
-from dotenv import load_dotenv
-import os
-load_dotenv()
 
 from app.core.config import get_settings
+
+
+@lru_cache
+def get_mineru_parser() -> MinerUApiParser:
+    """第一次加载 PDF 时创建并复用 MinerU 云端解析客户端。"""
+    settings = get_settings()
+    if not settings.mineru_api_key:
+        raise RuntimeError("未配置 MINERU_API_KEY（兼容旧名称 MINERU_TOKEN）")
+
+    return MinerUApiParser(
+        api_key=settings.mineru_api_key,
+        api_url=settings.mineru_api_url,
+        tier=settings.mineru_tier,
+    )
+
 
 def loader(file_path: str | Path) -> str:
     """文档加载器"""
@@ -20,13 +32,13 @@ def loader(file_path: str | Path) -> str:
     if not path.is_file():
         raise FileNotFoundError(f"文件不存在：{path}")
 
-    client = MinerU(token=os.getenv("MINERU_TOKEN"))
-    result = client.flash_extract(str(path))
+    result = get_mineru_parser().parse(path)
+    markdown = result.markdown()
 
-    if not isinstance(result, str):
+    if not isinstance(markdown, str):
         raise TypeError(f"MinerU 返回类型异常：{type(result)}")
 
-    return result
+    return markdown
 
 
 def split_markdown(markdown: str) -> list[Document]:
