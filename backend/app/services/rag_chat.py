@@ -50,6 +50,7 @@ def get_chat_model() -> ChatOpenAI:
         api_key=settings.deepseek_api_key,
         base_url=settings.deepseek_base_url,
         temperature=0,
+        streaming=True,
     )
 
 

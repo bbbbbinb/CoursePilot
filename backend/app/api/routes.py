@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from app.core.config import get_settings
 from app.schemas import ChatRequest, DocumentUploadResponse, HealthResponse
 from app.services.RAG_services import loader, split_markdown,get_vector_store
-from app.services.rag_chat import stream_rag_answer
+from app.services.agent_chat import stream_agent_answer
 
 router = APIRouter(prefix="/api/v1")
 logger = logging.getLogger(__name__)
@@ -163,7 +163,7 @@ async def chat(body: ChatRequest) -> StreamingResponse:
         yield sse_event("meta", {"session_id": body.session_id})
 
         try:
-            async for event, payload in stream_rag_answer(
+            async for event, payload in stream_agent_answer(
                 body.question,
                 effective_top_k,
             ):

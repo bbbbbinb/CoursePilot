@@ -123,7 +123,7 @@ def test_chat_streams_sources_tokens_and_done(monkeypatch) -> None:
         yield "token", {"text": "递归需要基准情形 [1]。"}
         yield "token", {"text": "否则会无限调用。"}
 
-    monkeypatch.setattr(routes, "stream_rag_answer", fake_stream)
+    monkeypatch.setattr(routes, "stream_agent_answer", fake_stream)
 
     response = client.post(
         "/api/v1/chat",
@@ -160,7 +160,7 @@ def test_chat_streams_refusal_and_done(monkeypatch) -> None:
         yield "sources", {"sources": []}
         yield "refusal", {"reason": "课程资料不足以回答该问题。"}
 
-    monkeypatch.setattr(routes, "stream_rag_answer", fake_stream)
+    monkeypatch.setattr(routes, "stream_agent_answer", fake_stream)
 
     response = client.post(
         "/api/v1/chat",
@@ -188,7 +188,7 @@ def test_chat_returns_error_without_done_when_generation_fails(
         yield "sources", {"sources": []}
         raise RuntimeError("模型请求失败")
 
-    monkeypatch.setattr(routes, "stream_rag_answer", fake_stream)
+    monkeypatch.setattr(routes, "stream_agent_answer", fake_stream)
 
     response = client.post(
         "/api/v1/chat",
