@@ -1,3 +1,5 @@
+""""RAG检索层: 相似度搜索"""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -133,11 +135,14 @@ def retrieve_documents(
         (
             (document, distance)
             for document, distance in candidates
+            # 拒答的关键， 过滤掉距离过大的候选，避免 RAG 回答时引用明显不相关的内容。
             if distance <= effective_max_distance
         ),
+        #按第二个元素{距离}进行排序
         key=lambda item: item[1],
     )
 
+    # 重新编号，构建结果
     hits = [
         RetrievalHit(index=index, document=document, distance=distance)
         for index, (document, distance) in enumerate(qualified, start=1)

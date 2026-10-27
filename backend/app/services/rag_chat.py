@@ -22,6 +22,7 @@ SYSTEM_PROMPT = """你是 CoursePilot 课程助教。
 当前课程资料不足以回答该问题。
 4. 不要尝试推测，不要补充外部知识，不要伪造页码或文件来源。"""
 
+# 构建RAG提示词模板
 RAG_PROMPT = ChatPromptTemplate.from_messages(
     [
         ("system", SYSTEM_PROMPT),
@@ -37,7 +38,7 @@ RAG_PROMPT = ChatPromptTemplate.from_messages(
     ]
 )
 
-
+# 模型工厂
 @lru_cache
 def get_chat_model() -> ChatOpenAI:
     """按需创建 DeepSeek 的 OpenAI 兼容聊天模型。"""
