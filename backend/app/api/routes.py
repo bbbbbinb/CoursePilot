@@ -166,6 +166,7 @@ async def chat(body: ChatRequest) -> StreamingResponse:
             async for event, payload in stream_agent_answer(
                 body.question,
                 effective_top_k,
+                session_id=body.session_id
             ):
                 yield sse_event(event, payload)
         except asyncio.CancelledError:
