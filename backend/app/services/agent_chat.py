@@ -1,95 +1,55 @@
 import asyncio
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from typing import Any
 
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from langchain_core.messages import HumanMessage
 
-from app.agents.course_tutor import CourseTutorContext, create_course_tutor
-from app.services.retrieval import retrieve_documents
+from app.agents.build import build_course_tutor_graph
 
 
-def _content_to_text(content: Any) -> str:
-    if isinstance(content, str):
-        return content
-    if not isinstance(content, list):
-        return ""
-
-    parts: list[str] = []
-    for item in content:
-        if isinstance(item, str):
-            parts.append(item)
-        elif isinstance(item, dict) and isinstance(item.get("text"), str):
-            parts.append(item["text"])
-    return "".join(parts)
+Event = tuple[str, dict[str, Any]]
 
 
 async def stream_agent_answer(
     question: str,
     top_k: int,
-) -> AsyncIterator[tuple[str, dict[str, Any]]]:
-    """执行课程 Agent，并把消息流转换为 sources/token/refusal 事件。"""
-    retrieval = await asyncio.to_thread(
-        retrieve_documents,
-        question,
-        top_k=top_k,
-    )
-    context = CourseTutorContext(top_k=top_k)
+) -> AsyncIterator[Event]:
+    """执行 Agent 图，并通过节点事件队列持续输出 SSE 事件。"""
+    event_queue: asyncio.Queue[Event | None] = asyncio.Queue()
+    graph = build_course_tutor_graph()
+    config = {
+        "recursion_limit": 20,
+        "configurable": {"event_queue": event_queue},
+    }
+    inputs = {
+        "messages": [HumanMessage(content=question)],
+        "question": question,
+        "top_k": top_k,
+    }
 
-    if not retrieval.is_sufficient:
-        yield "sources", {"sources": []}
-        yield "refusal", {
-            "reason": retrieval.reason or "课程资料不足以回答该问题。"
-        }
-        return
+    async def run_graph():
+        try:
+            return await graph.ainvoke(inputs, config=config)
+        finally:
+            event_queue.put_nowait(None)
 
-    initial_context = context.register_retrieval(retrieval)
-    agent = create_course_tutor()
-    sources_sent = False
-    has_text = False
+    graph_task = asyncio.create_task(run_graph())
+    saw_text = False
+    saw_refusal = False
+    try:
+        while (event := await event_queue.get()) is not None:
+            if event[0] == "token":
+                saw_text = True
+            elif event[0] == "refusal":
+                saw_refusal = True
+            yield event
 
-    async for item in agent.astream(
-        {
-            "messages": [
-                HumanMessage(
-                    content=(
-                        "以下是初始检索到的课程片段：\n\n"
-                        f"{initial_context}\n\n"
-                        f"用户问题：\n{question}"
-                    )
-                )
-            ]
-        },
-        context=context,
-        stream_mode="messages",
-        config={"recursion_limit": 8},
-    ):
-        if not isinstance(item, tuple) or len(item) != 2:
-            continue
-
-        chunk, _metadata = item
-        if not isinstance(chunk, (AIMessage, AIMessageChunk)):
-            continue
-
-        text = _content_to_text(chunk.content)
-        if not text:
-            continue
-
-        if not sources_sent:
-            if not context.source_list:
-                yield "sources", {"sources": []}
-                yield "refusal", {"reason": context.refusal_reason}
-                return
-
-            yield "sources", {"sources": context.source_list}
-            sources_sent = True
-
-        has_text = True
-        yield "token", {"text": text}
-
-    if not sources_sent:
-        yield "sources", {"sources": []}
-        yield "refusal", {"reason": context.refusal_reason}
-        return
-
-    if not has_text:
-        raise RuntimeError("Agent 未返回有效文本")
+        await graph_task
+        if not saw_text and not saw_refusal:
+            raise RuntimeError("Agent 图未返回有效回答")
+    finally:
+        if not graph_task.done():
+            graph_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await graph_task
