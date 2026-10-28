@@ -1,54 +1,52 @@
 import asyncio
 
-from langchain_core.documents import Document
-from langchain_core.messages import AIMessage, AIMessageChunk
-
 from app.services import agent_chat
-from app.services.retrieval import RetrievalHit, RetrievalResult
 
 
-def make_retrieval(*, sufficient: bool) -> RetrievalResult:
-    if not sufficient:
-        return RetrievalResult(
-            question="明天杭州天气怎么样？",
-            hits=[],
-            reason="检索到的课程片段相关性不足，无法据此回答。",
+SOURCE = {
+    "index": 1,
+    "file_name": "递归讲义.md",
+    "page": 1,
+    "snippet": "递归函数需要基准情形和递归关系。",
+}
+
+
+class FakeGraph:
+    def __init__(self, *, sufficient: bool, invalid_citation: bool = False) -> None:
+        self.sufficient = sufficient
+        self.invalid_citation = invalid_citation
+
+    async def ainvoke(self, input_data, *, config):
+        assert input_data["question"] == "测试问题"
+        assert input_data["top_k"] == 4
+        assert config["recursion_limit"] == 20
+        queue = config["configurable"]["event_queue"]
+
+        if not self.sufficient:
+            queue.put_nowait(("sources", {"sources": []}))
+            queue.put_nowait(
+                (
+                    "refusal",
+                    {"reason": "检索到的课程片段相关性不足，无法据此回答。"},
+                )
+            )
+            return {"answer": "检索到的课程片段相关性不足，无法据此回答。"}
+
+        queue.put_nowait(("sources", {"sources": [SOURCE]}))
+        answer = (
+            "递归需要基准情形 [9]。"
+            if self.invalid_citation
+            else "递归需要基准情形 [1]。"
         )
+        queue.put_nowait(("token", {"text": answer}))
 
-    document = Document(
-        page_content="递归函数需要基准情形和递归关系。",
-        metadata={
-            "chunk_id": "doc-1:0000",
-            "file_name": "递归讲义.md",
-            "Header 1": "第一章 递归",
-        },
-    )
-    return RetrievalResult(
-        question="递归为什么需要基准情形？",
-        hits=[RetrievalHit(index=1, document=document, distance=0.2)],
-    )
+        if self.invalid_citation:
+            queue.put_nowait(("replace", {"text": "递归需要基准情形。"}))
+            queue.put_nowait(
+                ("refusal", {"reason": "课程资料不足以回答该问题。"})
+            )
 
-
-class FakeAgent:
-    def __init__(self, mode: str) -> None:
-        self.mode = mode
-
-    async def astream(
-        self,
-        input_data,
-        *,
-        context,
-        stream_mode,
-        config,
-    ):
-        prompt = input_data["messages"][0].content
-        assert "测试问题" in prompt
-        assert "[1] 文件：递归讲义.md" in prompt
-        assert stream_mode == "messages"
-        assert config == {"recursion_limit": 8}
-
-        yield AIMessageChunk(content=""), {}
-        yield AIMessage(content="递归需要基准情形 [1]。"), {}
+        return {"answer": answer}
 
 
 async def collect_events():
@@ -61,41 +59,24 @@ async def collect_events():
 def test_stream_agent_answer_emits_sources_before_tokens(monkeypatch) -> None:
     monkeypatch.setattr(
         agent_chat,
-        "retrieve_documents",
-        lambda question, top_k: make_retrieval(sufficient=True),
-    )
-    monkeypatch.setattr(
-        agent_chat,
-        "create_course_tutor",
-        lambda: FakeAgent("sufficient"),
+        "build_course_tutor_graph",
+        lambda: FakeGraph(sufficient=True),
     )
 
     events = asyncio.run(collect_events())
 
     assert [name for name, _ in events] == ["sources", "token"]
-    assert events[0][1]["sources"] == [
-        {
-            "index": 1,
-            "file_name": "递归讲义.md",
-            "page": 1,
-            "snippet": "递归函数需要基准情形和递归关系。",
-        }
-    ]
+    assert events[0][1]["sources"] == [SOURCE]
     assert events[1][1] == {"text": "递归需要基准情形 [1]。"}
 
 
-def test_stream_agent_answer_refuses_when_tool_finds_no_evidence(
+def test_stream_agent_answer_refuses_when_evidence_is_insufficient(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
         agent_chat,
-        "retrieve_documents",
-        lambda question, top_k: make_retrieval(sufficient=False),
-    )
-    monkeypatch.setattr(
-        agent_chat,
-        "create_course_tutor",
-        lambda: (_ for _ in ()).throw(AssertionError("不应创建 Agent")),
+        "build_course_tutor_graph",
+        lambda: FakeGraph(sufficient=False),
     )
 
     events = asyncio.run(collect_events())
@@ -107,22 +88,19 @@ def test_stream_agent_answer_refuses_when_tool_finds_no_evidence(
     }
 
 
-def test_stream_agent_answer_answers_from_initial_retrieval_when_model_skips_tool(
-    monkeypatch,
-) -> None:
+def test_stream_agent_answer_replaces_invalid_citation_output(monkeypatch) -> None:
     monkeypatch.setattr(
         agent_chat,
-        "retrieve_documents",
-        lambda question, top_k: make_retrieval(sufficient=True),
-    )
-    monkeypatch.setattr(
-        agent_chat,
-        "create_course_tutor",
-        lambda: FakeAgent("skipped"),
+        "build_course_tutor_graph",
+        lambda: FakeGraph(sufficient=True, invalid_citation=True),
     )
 
     events = asyncio.run(collect_events())
 
-    assert [name for name, _ in events] == ["sources", "token"]
-    assert events[0][1]["sources"][0]["index"] == 1
-    assert events[1][1] == {"text": "递归需要基准情形 [1]。"}
+    assert [name for name, _ in events] == [
+        "sources",
+        "token",
+        "replace",
+        "refusal",
+    ]
+    assert events[2][1] == {"text": "递归需要基准情形。"}
