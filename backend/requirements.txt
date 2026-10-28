@@ -11,6 +11,7 @@ langchain-openai>=1.0,<2.0
 langchain-chroma>=1.0,<2.0
 langchain-deepseek>=1.0,<2.0
 langchain-text-splitters>=1.0,<2.0
+langgraph>=1.2,<2.0
 chromadb>=1.0,<2.0
 dashscope>=1.20,<3.0
 mineru>=4.0.12,<5.0

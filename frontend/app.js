@@ -502,6 +502,10 @@
         ai.statusEl.textContent = "生成中…";
         scheduleRender(ai);
       },
+      replace(data) {
+        ai.raw = data.text || "";
+        scheduleRender(ai);
+      },
       refusal(data) {
         renderRefusal(ai, data.reason || data.message || "资料中没有找到足够依据。");
       },

@@ -15,7 +15,7 @@ CoursePilot 是一个课程知识库 Agent 助教。它把课程 PDF、Markdown 
 - 根据向量距离过滤低相关片段，避免把所有候选都交给模型。
 - 检索结果附 `[1]`、`[2]` 编号，前端可展示来源卡片。
 - 检索不足时直接拒答，不调用生成模型编造无依据回答。
-- 使用 LangChain 1.x `create_agent` 编排课程助教 Agent。
+- 使用 LangGraph `StateGraph` 显式编排课程助教 Agent。
 - 提供 FastAPI SSE 流式接口，并由 FastAPI 直接托管前端。
 - 使用 pytest 覆盖 API、入库、检索、拒答和 Agent 事件转换。
 
@@ -35,24 +35,26 @@ PDF / MD / TXT
   → 相关性过滤
   → 证据不足：refusal
   → 证据充分：课程上下文 + sources
-  → CoursePilot Agent
-  → DeepSeek 生成回答
+  → LangGraph 条件路由
+  → 查询重写 / 回答生成
+  → 引用校验与修复
   → SSE 输出
 ```
 
-当前采用“检索优先的 Agentic RAG”：
+当前采用“检索优先的可编排 Agentic RAG”：
 
-1. 后端先执行一次可测试、可追踪的初始检索，保证 sources 和拒答基线稳定。
-2. `CourseTutorContext` 在单次请求内保存来源，避免并发请求共享状态。
-3. Agent 可以根据需要调用 `retrieve_course_docs` 工具补充检索。
-4. Agent 只能根据课程片段回答，并使用已有的来源编号。
+1. `normalize_question → retrieve → grade_evidence` 建立可测试的检索与拒答基线。
+2. 证据不足时进入 `rewrite_query`，有限次数重试后确定性拒答。
+3. 证据充分时由 `generate` 流式生成回答，再经过 `verify_citations`。
+4. 无效引用由 `repair_answer` 修复一次，仍不合格则拒答。
+5. 最终由 `finalize` 写回模型消息历史，便于后续接入 Checkpointer。
 
 ## 技术栈
 
 | 模块 | 技术 |
 |---|---|
 | Web API | FastAPI、Uvicorn |
-| Agent | LangChain 1.x `create_agent` |
+| Agent | LangGraph `StateGraph`、LangChain 1.x |
 | LLM | DeepSeek `deepseek-chat`（OpenAI 兼容接口） |
 | Embedding | DashScope `text-embedding-v4` |
 | PDF 解析 | MinerU API |
@@ -68,7 +70,11 @@ CoursePilot/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/
-│   │   │   └── course_tutor.py    # Agent 工厂、工具和请求级上下文
+│   │   │   ├── state.py           # 可序列化的图状态
+│   │   │   ├── nodes.py           # 检索、生成、引用校验等节点
+│   │   │   ├── edges.py           # 证据和引用条件路由
+│   │   │   ├── build.py           # StateGraph 组装与编译
+│   │   │   └── course_tutor.py    # 兼容旧调用方的图工厂
 │   │   ├── api/
 │   │   │   └── routes.py          # health、文档上传、聊天 SSE
 │   │   ├── core/
@@ -193,6 +199,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 | `meta` | `{"session_id": "..."}` |
 | `sources` | `{"sources": [...]}` |
 | `token` | `{"text": "增量文本"}` |
+| `replace` | `{"text": "修正后的完整回答"}` |
 | `refusal` | `{"reason": "..."}` |
 | `done` | `{"latency_ms": 1234}` |
 | `error` | `{"message": "..."}` |
@@ -224,8 +231,9 @@ cd path\to\CoursePilot\backend
 - 文档切分和 MinerU 返回适配。
 - 相关性过滤、sources 编号和拒答。
 - 固定 RAG 提示词与流式 token。
-- Agent sources/token 事件映射。
-- `/chat` 的 `meta/sources/token/refusal/done/error` 契约。
+- LangGraph 条件路由、查询重写和引用修复。
+- Agent sources/token/replace/refusal 事件映射。
+- `/chat` 的 `meta/sources/token/replace/refusal/done/error` 契约。
 
 ## 设计说明
 
@@ -238,7 +246,6 @@ cd path\to\CoursePilot\backend
 ## 已知限制
 
 - PDF 页码尚未随切分片段保存，当前 PDF/Markdown 来源的 `page` 会回退为 `1`。
-- 当前 Agent 的最终消息可能以一个完整 `token` 事件返回，SSE 通道可用，但尚未实现逐字流式。
 - 暂未实现 SQLite 会话历史、文档删除、重复上传去重和多用户隔离。
 - 暂未实现检索评测集、引用准确率统计和 LangSmith 链路追踪。
 - 暂未提供 Docker 部署。
@@ -249,6 +256,6 @@ cd path\to\CoursePilot\backend
 1. 保留 PDF 页码和章节元数据，实现准确的页码引用。
 2. 增加 SQLite 会话、消息历史和文档元数据。
 3. 建立课程问答评测集，评估检索召回率、引用准确率和拒答率。
-4. 优化 Agent 的逐 token 流式输出。
+4. 接入 LangGraph Checkpointer，实现按 `session_id` 保存多轮状态。
 5. 增加文档删除、去重和增量更新。
 6. 增加 Docker、日志和基础可观测性。

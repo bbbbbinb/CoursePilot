@@ -59,6 +59,7 @@ frontend/
 | `meta` | `{"session_id": "..."}` | 会话 ID，可覆盖前端生成的临时 ID |
 | `sources` | `{"sources": [...]}` | 检索结果，建议在 token 之前发送 |
 | `token` | `{"text": "增量文本"}` | 流式生成片段 |
+| `replace` | `{"text": "完整文本"}` | 用校验或修复后的完整回答替换当前内容 |
 | `refusal` | `{"reason": "..."}` | 检索不足，前端展示拒答卡片 |
 | `done` | `{"latency_ms": 1234}` | 本轮结束 |
 | `error` | `{"message": "..."}` | 统一错误出口 |
