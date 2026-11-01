@@ -494,6 +494,9 @@
         if (data.session_id) setSession(data.session_id);
         ai.statusEl.textContent = "生成中…";
       },
+      status(data) {
+        if (data.message) ai.statusEl.textContent = data.message;
+      },
       sources(data) {
         setSources(ai, data.sources || data.documents || []);
       },
@@ -646,6 +649,28 @@
     }
 
     ai.sourcesEl.hidden = !state.settings.showSources;
+    const sourceItems = ai.sources.map((source) => {
+      const sourceName = source.file_name || source.title || source.source || "未知文件";
+      const sourceUrl = source.source_type === "web" ? safeHttpUrl(source.url) : "";
+      const nameHtml = sourceUrl
+        ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(sourceName)}</a>`
+        : escapeHtml(sourceName);
+      const sourceMeta = source.source_type === "web"
+        ? "网页"
+        : `p.${escapeHtml(String(source.page ?? "—"))}`;
+
+      return `<li class="source-item" data-source="${source.index}">
+        <span class="source-index">${source.index}</span>
+        <div>
+          <div class="source-file" title="${escapeHtml(sourceName)}">
+            ${nameHtml}
+            <span class="source-page">${sourceMeta}</span>
+          </div>
+          <p class="source-snippet">${escapeHtml(source.snippet || source.content || "")}</p>
+        </div>
+      </li>`;
+    }).join("");
+
     ai.sourcesEl.innerHTML = `
       <button class="sources-head" type="button" aria-expanded="true">
         <span>引用来源</span>
@@ -653,17 +678,7 @@
         <span class="chevron">▾</span>
       </button>
       <ol class="source-list">
-        ${ai.sources.map((source) => `
-          <li class="source-item" data-source="${source.index}">
-            <span class="source-index">${source.index}</span>
-            <div>
-              <div class="source-file" title="${escapeHtml(source.file_name || source.source || "未知文件")}">
-                ${escapeHtml(source.file_name || source.source || "未知文件")}
-                <span class="source-page">p.${escapeHtml(String(source.page ?? "—"))}</span>
-              </div>
-              <p class="source-snippet">${escapeHtml(source.snippet || source.content || "")}</p>
-            </div>
-          </li>`).join("")}
+        ${sourceItems}
       </ol>`;
   }
 
@@ -946,6 +961,15 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function safeHttpUrl(value) {
+    try {
+      const url = new URL(String(value));
+      return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+    } catch {
+      return "";
+    }
   }
 
   function cssEscape(value) {

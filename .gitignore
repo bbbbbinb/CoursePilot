@@ -3,6 +3,8 @@
 __pycache__/
 *.pyc
 data/chroma/
+data/session/
 data/uploads/
 .pytest_cache/
-.vscode
+.vscode/
+.DS_Store
