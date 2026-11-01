@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 
 from app.services import agent_chat
 
@@ -19,6 +20,7 @@ class FakeGraph:
     async def ainvoke(self, input_data, *, config):
         assert input_data["question"] == "测试问题"
         assert input_data["top_k"] == 4
+        assert input_data["allow_web"] is False
         assert config["recursion_limit"] == 20
         queue = config["configurable"]["event_queue"]
 
@@ -52,16 +54,29 @@ class FakeGraph:
 async def collect_events():
     return [
         event
-        async for event in agent_chat.stream_agent_answer("测试问题", 4)
+        async for event in agent_chat.stream_agent_answer(
+            "测试问题",
+            4,
+            session_id="test-session",
+            allow_web=False,
+        )
     ]
 
 
-def test_stream_agent_answer_emits_sources_before_tokens(monkeypatch) -> None:
+def use_graph(monkeypatch, graph: FakeGraph) -> None:
+    @asynccontextmanager
+    async def fake_course_tutor():
+        yield graph
+
     monkeypatch.setattr(
         agent_chat,
-        "build_course_tutor_graph",
-        lambda: FakeGraph(sufficient=True),
+        "create_course_tutor",
+        fake_course_tutor,
     )
+
+
+def test_stream_agent_answer_emits_sources_before_tokens(monkeypatch) -> None:
+    use_graph(monkeypatch, FakeGraph(sufficient=True))
 
     events = asyncio.run(collect_events())
 
@@ -73,11 +88,7 @@ def test_stream_agent_answer_emits_sources_before_tokens(monkeypatch) -> None:
 def test_stream_agent_answer_refuses_when_evidence_is_insufficient(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(
-        agent_chat,
-        "build_course_tutor_graph",
-        lambda: FakeGraph(sufficient=False),
-    )
+    use_graph(monkeypatch, FakeGraph(sufficient=False))
 
     events = asyncio.run(collect_events())
 
@@ -89,11 +100,7 @@ def test_stream_agent_answer_refuses_when_evidence_is_insufficient(
 
 
 def test_stream_agent_answer_replaces_invalid_citation_output(monkeypatch) -> None:
-    monkeypatch.setattr(
-        agent_chat,
-        "build_course_tutor_graph",
-        lambda: FakeGraph(sufficient=True, invalid_citation=True),
-    )
+    use_graph(monkeypatch, FakeGraph(sufficient=True, invalid_citation=True))
 
     events = asyncio.run(collect_events())
 

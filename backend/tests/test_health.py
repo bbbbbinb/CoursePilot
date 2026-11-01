@@ -107,9 +107,17 @@ def test_document_upload_rejects_unsupported_file_type() -> None:
 def test_chat_streams_sources_tokens_and_done(monkeypatch) -> None:
     captured: dict = {}
 
-    async def fake_stream(question: str, top_k: int):
+    async def fake_stream(
+        question: str,
+        top_k: int,
+        *,
+        session_id: str,
+        allow_web: bool,
+    ):
         captured["question"] = question
         captured["top_k"] = top_k
+        captured["session_id"] = session_id
+        captured["allow_web"] = allow_web
         yield "sources", {
             "sources": [
                 {
@@ -147,6 +155,8 @@ def test_chat_streams_sources_tokens_and_done(monkeypatch) -> None:
     assert captured == {
         "question": "递归为什么需要基准情形？",
         "top_k": 2,
+        "session_id": "test-session",
+        "allow_web": False,
     }
     assert event_names == ["meta", "sources", "token", "token", "done"]
     assert events[0][1] == {"session_id": "test-session"}
@@ -156,7 +166,13 @@ def test_chat_streams_sources_tokens_and_done(monkeypatch) -> None:
 
 
 def test_chat_streams_refusal_and_done(monkeypatch) -> None:
-    async def fake_stream(question: str, top_k: int):
+    async def fake_stream(
+        question: str,
+        top_k: int,
+        *,
+        session_id: str,
+        allow_web: bool,
+    ):
         yield "sources", {"sources": []}
         yield "refusal", {"reason": "课程资料不足以回答该问题。"}
 
@@ -184,7 +200,13 @@ def test_chat_streams_refusal_and_done(monkeypatch) -> None:
 def test_chat_returns_error_without_done_when_generation_fails(
     monkeypatch,
 ) -> None:
-    async def fake_stream(question: str, top_k: int):
+    async def fake_stream(
+        question: str,
+        top_k: int,
+        *,
+        session_id: str,
+        allow_web: bool,
+    ):
         yield "sources", {"sources": []}
         raise RuntimeError("模型请求失败")
 
