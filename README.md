@@ -1,8 +1,8 @@
 # CoursePilot
 
 CoursePilot 是一个课程知识库 Agent 助教。它把课程 PDF、Markdown 和 TXT
-转换为可检索的向量知识库，并通过 DeepSeek 生成带来源编号的回答；当检索依据
-不足时，系统会明确拒答。
+转换为可检索的向量知识库，并通过 DeepSeek 生成带来源编号的回答。课程证据
+不足时可以按配置使用 MCP 网页搜索补证，否则明确拒答。
 
 ![CoursePilot 前端](frontend/preview-live.png)
 
@@ -12,10 +12,13 @@ CoursePilot 是一个课程知识库 Agent 助教。它把课程 PDF、Markdown 
 - 使用 MinerU 解析 PDF，支持 Markdown、TXT 直接读取。
 - 按 Markdown 标题层级切分文档，保留章节元数据。
 - 使用 DashScope Embedding 生成向量，并持久化到 Chroma。
+- Supervisor 将请求路由为 direct、clarify、refuse 或 course_query。
+- 课程检索使用确定性向量检索，证据不足时可进入 MCP 网页研究 Agent。
 - 根据向量距离过滤低相关片段，避免把所有候选都交给模型。
 - 检索结果附 `[1]`、`[2]` 编号，前端可展示来源卡片。
 - 检索不足时直接拒答，不调用生成模型编造无依据回答。
-- 使用 LangGraph `StateGraph` 显式编排课程助教 Agent。
+- 使用 LangGraph `StateGraph` 编排路由、检索、网页研究和回答节点。
+- 使用 Async SQLite Checkpointer 按 `session_id` 持久化多轮状态。
 - 提供 FastAPI SSE 流式接口，并由 FastAPI 直接托管前端。
 - 使用 pytest 覆盖 API、入库、检索、拒答和 Agent 事件转换。
 
@@ -30,24 +33,28 @@ PDF / MD / TXT
   → Chroma 持久化
 
 问答
-用户问题
-  → 初始向量检索
-  → 相关性过滤
-  → 证据不足：refusal
-  → 证据充分：课程上下文 + sources
-  → LangGraph 条件路由
-  → 查询重写 / 回答生成
+用户问题 + 会话历史
+  → Supervisor 路由与独立检索查询
+  → direct / clarify / refuse / course_query
+  → 确定性课程向量检索
+  → 课程证据门控
+       ├── 证据充分：合并课程证据
+       ├── 证据不足：MCP 网页研究 Agent（可选）
+       └── 不可联网或仍不足：refusal
+  → 统一 Answer Agent
   → 引用校验与修复
+  → SQLite Checkpoint
   → SSE 输出
 ```
 
-当前采用“检索优先的可编排 Agentic RAG”：
+当前采用“Supervisor 编排的课程优先 Agentic RAG”：
 
-1. `normalize_question → retrieve → grade_evidence` 建立可测试的检索与拒答基线。
-2. 证据不足时进入 `rewrite_query`，有限次数重试后确定性拒答。
-3. 证据充分时由 `generate` 流式生成回答，再经过 `verify_citations`。
-4. 无效引用由 `repair_answer` 修复一次，仍不合格则拒答。
-5. 最终由 `finalize` 写回模型消息历史，便于后续接入 Checkpointer。
+1. `supervisor` 结合历史完成路由，并为课程问题生成独立检索查询。
+2. 课程检索是确定性节点，避免为一个固定检索工具增加无意义的模型循环。
+3. `course_evidence_gate` 根据向量阈值决定直接回答、网页补证或拒答。
+4. `web_research` 是拥有 MCP 工具的最小权限 Agent，只能返回结构化网页证据。
+5. `answer` 统一基于带编号证据生成回答，`verify_citations` 负责引用安全。
+6. `AsyncSqliteSaver` 保存消息、研究证据和路由状态，同一 `session_id` 可恢复上下文。
 
 ## 技术栈
 
@@ -55,6 +62,7 @@ PDF / MD / TXT
 |---|---|
 | Web API | FastAPI、Uvicorn |
 | Agent | LangGraph `StateGraph`、LangChain 1.x |
+| 外部工具 | MCP、`langchain-mcp-adapters` |
 | LLM | DeepSeek `deepseek-chat`（OpenAI 兼容接口） |
 | Embedding | DashScope `text-embedding-v4` |
 | PDF 解析 | MinerU API |
@@ -74,7 +82,7 @@ CoursePilot/
 │   │   │   ├── nodes.py           # 检索、生成、引用校验等节点
 │   │   │   ├── edges.py           # 证据和引用条件路由
 │   │   │   ├── build.py           # StateGraph 组装与编译
-│   │   │   └── course_tutor.py    # 兼容旧调用方的图工厂
+│   │   │   └── course_tutor.py    # 图工厂与 Async SQLite Checkpointer
 │   │   ├── api/
 │   │   │   └── routes.py          # health、文档上传、聊天 SSE
 │   │   ├── core/
@@ -93,6 +101,7 @@ CoursePilot/
 │   ├── app.js
 │   └── styles.css
 ├── data/chroma/                   # 本地 Chroma 数据，不提交 Git
+├── data/session/                  # SQLite 会话状态，不提交 Git
 ├── .env.example
 └── README.md
 ```
@@ -126,11 +135,19 @@ MINERU_API_URL=https://mineru.net/api
 MINERU_TIER=standard
 
 CHROMA_DIR=data/chroma
+SESSION_DB_PATH=data/session/langgraph.sqlite
 TOP_K=4
 RETRIEVAL_MAX_DISTANCE=1.1
+
+WEB_SEARCH_ENABLED=false
+WEB_SEARCH_MCP_CONFIG=
 ```
 
 兼容旧的 `MINERU_TOKEN` 变量名，但推荐统一使用 `MINERU_API_KEY`。
+
+启用网页补证时，将 `WEB_SEARCH_ENABLED=true`，并把
+`WEB_SEARCH_MCP_CONFIG` 设置为 `MultiServerMCPClient(connections=...)`
+接受的 JSON 对象。未配置 MCP 时，课程证据不足会直接拒答。
 
 启动服务：
 
@@ -188,15 +205,19 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 {
   "session_id": "session-id",
   "question": "递归和迭代有什么区别？",
-  "top_k": 4
+  "top_k": 4,
+  "allow_web": true
 }
 ```
+
+`allow_web` 是用户侧开关，最终还会与服务端 `WEB_SEARCH_ENABLED` 同时生效。
 
 响应类型为 `text/event-stream`：
 
 | 事件 | 数据 |
 |---|---|
 | `meta` | `{"session_id": "..."}` |
+| `status` | `{"message": "当前处理阶段"}` |
 | `sources` | `{"sources": [...]}` |
 | `token` | `{"text": "增量文本"}` |
 | `replace` | `{"text": "修正后的完整回答"}` |
@@ -209,6 +230,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```json
 {
   "index": 1,
+  "source_type": "course",
   "file_name": "lecture.md",
   "page": 1,
   "snippet": "递归函数需要基准情形和递归关系。"
@@ -216,6 +238,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 `sources[].index` 与回答中的 `[1]`、`[2]` 一一对应。
+网页来源使用 `source_type="web"` 并包含 `title`、`url`。
 
 ## 测试
 
@@ -231,7 +254,8 @@ cd path\to\CoursePilot\backend
 - 文档切分和 MinerU 返回适配。
 - 相关性过滤、sources 编号和拒答。
 - 固定 RAG 提示词与流式 token。
-- LangGraph 条件路由、查询重写和引用修复。
+- Supervisor 路由、确定性课程检索、MCP 网页补证和引用修复。
+- Async SQLite Checkpointer 的跨请求消息恢复。
 - Agent sources/token/replace/refusal 事件映射。
 - `/chat` 的 `meta/sources/token/replace/refusal/done/error` 契约。
 
@@ -246,7 +270,7 @@ cd path\to\CoursePilot\backend
 ## 已知限制
 
 - PDF 页码尚未随切分片段保存，当前 PDF/Markdown 来源的 `page` 会回退为 `1`。
-- 暂未实现 SQLite 会话历史、文档删除、重复上传去重和多用户隔离。
+- 暂未实现文档删除、重复上传去重和多用户隔离。
 - 暂未实现检索评测集、引用准确率统计和 LangSmith 链路追踪。
 - 暂未提供 Docker 部署。
 - `langchain-community` 已进入 sunset 阶段，后续应迁移到独立集成包。
@@ -254,8 +278,7 @@ cd path\to\CoursePilot\backend
 ## 后续计划
 
 1. 保留 PDF 页码和章节元数据，实现准确的页码引用。
-2. 增加 SQLite 会话、消息历史和文档元数据。
-3. 建立课程问答评测集，评估检索召回率、引用准确率和拒答率。
-4. 接入 LangGraph Checkpointer，实现按 `session_id` 保存多轮状态。
-5. 增加文档删除、去重和增量更新。
-6. 增加 Docker、日志和基础可观测性。
+2. 增加文档元数据、删除、去重和增量更新。
+3. 建立课程问答评测集，评估路由、检索召回率、引用准确率和拒答率。
+4. 增加 MCP 搜索缓存、域名策略、超时和工具调用审计。
+5. 增加 Docker、日志和基础可观测性。
