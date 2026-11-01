@@ -32,14 +32,24 @@ class Settings(BaseSettings):
     mineru_api_url: str = "https://mineru.net/api"
     mineru_tier: Literal["flash", "basic", "standard", "advanced"] = "standard"
     chroma_dir: Path = PROJECT_ROOT / "data" / "chroma"
+    session_db_path: Path = PROJECT_ROOT / "data" / "session" / "langgraph.sqlite"
+    web_search_enabled: bool = False
+    web_search_mcp_config: str | None = None
     top_k: int = Field(default=4, ge=1, le=20)
     retrieval_max_distance: float = Field(default=1.1, gt=0)
 
-    @field_validator("chroma_dir")
+    @field_validator("chroma_dir", "session_db_path")
     @classmethod
-    def resolve_chroma_dir(cls, value: Path) -> Path:
+    def resolve_project_path(cls, value: Path) -> Path:
         """相对路径统一以项目根目录为基准。"""
         return value if value.is_absolute() else PROJECT_ROOT / value
+
+    @field_validator("web_search_mcp_config", mode="before")
+    @classmethod
+    def empty_mcp_config_to_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
 
 @lru_cache

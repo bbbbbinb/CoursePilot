@@ -10,6 +10,7 @@ class ChatRequest(BaseModel):
     session_id: str = Field(min_length=1, max_length=128)
     question: str = Field(min_length=1, max_length=4000)
     top_k: int | None = Field(default=None, ge=1, le=20)
+    allow_web: bool | None = None
 
     @field_validator("session_id", "question")
     @classmethod

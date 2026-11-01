@@ -156,6 +156,7 @@ async def chat(body: ChatRequest) -> StreamingResponse:
     """基于课程知识库流式生成回答。"""
     settings = get_settings()
     effective_top_k = body.top_k or settings.top_k
+    allow_web = settings.web_search_enabled and body.allow_web is not False
 
     async def generate() -> AsyncIterator[str]:
         started_at = time.perf_counter()
@@ -166,7 +167,8 @@ async def chat(body: ChatRequest) -> StreamingResponse:
             async for event, payload in stream_agent_answer(
                 body.question,
                 effective_top_k,
-                session_id=body.session_id
+                session_id=body.session_id,
+                allow_web=allow_web,
             ):
                 yield sse_event(event, payload)
         except asyncio.CancelledError:
