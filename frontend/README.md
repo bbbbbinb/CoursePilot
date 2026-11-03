@@ -1,8 +1,8 @@
-# CoursePilot 前端
+# 知衡前端
 
-课程知识库助教的聊天界面。零构建、零 CDN，纯 HTML / CSS / JavaScript，后端用 FastAPI 托管即可。
+企业制度与流程核验台。保留原有文档入库、知识问答和 SSE 接口，仅替换前端产品语义与交互展示。零构建、零 CDN，纯 HTML / CSS / JavaScript。
 
-![CoursePilot 预览](./preview-live.png)
+![知衡预览](./preview-enterprise.png)
 
 ## 本地预览
 
@@ -12,7 +12,9 @@ python frontend/mock_server.py
 
 打开 <http://127.0.0.1:8765>。
 
-`mock_server.py` 同时提供静态文件和假数据接口，用来验证交互、SSE 流式解析和上传进度。没有启动后端时，直接双击 `index.html` 也会自动进入演示模式（会预置 3 份示例资料）。
+`mock_server.py` 同时提供静态文件和假数据接口，用来验证交互、SSE 流式解析和上传进度。没有启动后端时，直接双击 `index.html` 也会自动进入演示模式（会预置 4 份企业示例资料）。
+
+为保持后端业务流程不变，`mock_server.py` 仍返回原有接口演示数据。查看企业化前端演示时，可在地址后追加 `?demo=1`；该模式使用前端内置的制度、审批流程、合同审核和信息安全 SOP 示例。
 
 ## 文件
 
@@ -20,7 +22,7 @@ python frontend/mock_server.py
 frontend/
   index.html       页面结构
   styles.css       视觉样式与响应式布局
-  app.js           上传、聊天、SSE 解析、Markdown 渲染、演示数据
+  app.js           上传、核验问答、SSE 解析、Markdown 渲染、企业演示数据
   mock_server.py   本地联调用 mock 服务（仅标准库）
 ```
 
@@ -49,7 +51,7 @@ frontend/
 请求：
 
 ```json
-{ "session_id": "uuid", "question": "递归和迭代的区别？", "top_k": 4 }
+{ "session_id": "uuid", "question": "客户申请非标折扣时如何审批？", "top_k": 4 }
 ```
 
 响应：`text/event-stream`，每个事件以空行结尾。
@@ -70,9 +72,9 @@ frontend/
 ```json
 {
   "index": 1,
-  "file_name": "数据结构_第08章_递归.pdf",
-  "page": 12,
-  "snippet": "递归函数通过调用自身来分解问题……"
+  "file_name": "大客户报价与折扣审批流程.md",
+  "page": 4,
+  "snippet": "低于标准折扣下限的报价，须经财务测算并由事业部总经理审批。"
 }
 ```
 
