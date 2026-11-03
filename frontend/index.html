@@ -3,27 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="课程知识库 Agent 助教：带页码引用的课程问答">
-  <title>CoursePilot · 课程知识库助教</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%233653d8'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Georgia' font-size='18' fill='white'%3EC%3C/text%3E%3C/svg%3E">
+  <meta name="description" content="知衡：基于企业制度、流程与 SOP 的可溯源知识核验台">
+  <title>知衡 · 企业制度与流程核验</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23166b58'/%3E%3Cpath d='M9 10h14M9 16h14M12 22h8' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar" id="sidebar" aria-label="知识库">
+    <aside class="sidebar" id="sidebar" aria-label="企业资料空间">
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">C</div>
+        <div class="brand-mark" aria-hidden="true">衡</div>
         <div class="brand-text">
-          <strong>CoursePilot</strong>
-          <span>课程知识库助教</span>
+          <strong>知衡</strong>
+          <span>企业制度与流程核验</span>
         </div>
-        <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="关闭侧栏">×</button>
+        <button class="icon-btn sidebar-close" id="sidebarClose" aria-label="关闭资料空间">×</button>
       </div>
 
       <div class="sidebar-section">
         <div class="section-head">
-          <span>知识库</span>
-          <span class="count" id="docCount">0 份</span>
+          <span>资料空间</span>
+          <span class="count" id="docCount">0 份资料</span>
         </div>
 
         <label class="dropzone" id="dropzone" for="fileInput">
@@ -32,20 +32,20 @@
             <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
-          <span class="drop-title">上传课程资料</span>
-          <span class="drop-hint">拖拽或点击 · PDF / MD / TXT</span>
+          <span class="drop-title">新增企业资料</span>
+          <span class="drop-hint">制度 / 流程 / SOP · PDF、MD、TXT</span>
         </label>
 
         <ul class="doc-list" id="docList"></ul>
-        <p class="doc-empty" id="docEmpty">还没有资料。先上传一份讲义试试。</p>
+        <p class="doc-empty" id="docEmpty">资料空间为空。上传企业制度、流程或 SOP 后开始核验。</p>
       </div>
 
       <div class="sidebar-foot">
         <div class="status-row">
           <span class="status-dot" id="healthDot"></span>
-          <span id="healthText">正在检测后端…</span>
+          <span id="healthText">正在连接知识服务…</span>
         </div>
-        <p>回答会标注来源页码；资料不足时会明确拒答。</p>
+        <p>回答保留原文出处；依据不足时停止推断并提示人工确认。</p>
       </div>
     </aside>
 
@@ -53,32 +53,63 @@
 
     <main class="main">
       <header class="topbar">
-        <button class="icon-btn menu-btn" id="menuBtn" aria-label="打开知识库">☰</button>
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="打开资料空间">☰</button>
         <div class="topbar-title">
-          <h1>课程问答</h1>
-          <p id="sessionLabel">新会话</p>
+          <h1>知识与流程核验</h1>
+          <p id="sessionLabel">新建核验</p>
         </div>
         <div class="topbar-actions">
-          <button class="ghost-btn" id="settingsBtn" aria-expanded="false">检索设置</button>
-          <button class="ghost-btn" id="newChatBtn">新会话</button>
+          <button class="ghost-btn" id="settingsBtn" aria-expanded="false">证据设置</button>
+          <button class="ghost-btn primary-ghost" id="newChatBtn">新建核验</button>
         </div>
       </header>
 
       <div class="chat-scroll" id="chatScroll">
         <div class="messages" id="messages">
           <section class="welcome" id="welcome">
-            <div class="welcome-mark" aria-hidden="true">C</div>
-            <p class="eyebrow">RETRIEVAL · GROUNDED · CITED</p>
-            <h2>从你的课程资料里找答案</h2>
+            <div class="welcome-mark" aria-hidden="true">衡</div>
+            <p class="eyebrow">EVIDENCE FIRST · ENTERPRISE READY</p>
+            <h2>先核验，再决策</h2>
             <p class="welcome-copy">
-              资料会被切分、索引，再作为上下文交给模型。每个回答都能追到原文页码，
-              找不到依据时它会直接告诉你。
+              基于企业已入库的制度、流程和 SOP 回答业务问题。每条结论都可以追溯原文；
+              证据不足时停止推断，并明确提示人工确认。
             </p>
-            <div class="suggestions" id="suggestions">
-              <button class="suggestion" type="button">递归和迭代的区别是什么？</button>
-              <button class="suggestion" type="button">这门课的考试重点有哪些？</button>
-              <button class="suggestion" type="button">帮我根据第三章制定一个复习计划</button>
+            <div class="principles" aria-label="核验原则">
+              <div class="principle">
+                <span>01</span>
+                <strong>原文入库</strong>
+                <small>统一检索制度与流程资料</small>
+              </div>
+              <div class="principle">
+                <span>02</span>
+                <strong>证据链可查</strong>
+                <small>回答对应文件与原文片段</small>
+              </div>
+              <div class="principle">
+                <span>03</span>
+                <strong>无依据不推断</strong>
+                <small>证据不足时提示人工确认</small>
+              </div>
             </div>
+            <div class="suggestions" id="suggestions">
+              <button class="suggestion" type="button" data-question="员工出差住宿标准是什么？有哪些报销限制？">
+                <span class="suggestion-kicker">制度查询</span>
+                <span>员工出差住宿标准是什么？有哪些报销限制？</span>
+              </button>
+              <button class="suggestion" type="button" data-question="客户申请非标折扣时，应按什么路径审批？">
+                <span class="suggestion-kicker">流程核验</span>
+                <span>客户申请非标折扣时，应按什么路径审批？</span>
+              </button>
+              <button class="suggestion" type="button" data-question="哪些对外合同必须提交法务复核？">
+                <span class="suggestion-kicker">合规确认</span>
+                <span>哪些对外合同必须提交法务复核？</span>
+              </button>
+              <button class="suggestion" type="button" data-question="发生信息安全事件后，应该在多长时间内上报？">
+                <span class="suggestion-kicker">应急 SOP</span>
+                <span>发生信息安全事件后，应该在多长时间内上报？</span>
+              </button>
+            </div>
+            <p class="workspace-note">当前为统一企业知识域 · 回答用于信息核验，不替代业务责任人的最终判断</p>
           </section>
         </div>
       </div>
@@ -86,17 +117,17 @@
       <footer class="composer-wrap">
         <form class="composer" id="composer">
           <textarea id="input" rows="1" maxlength="2000"
-            placeholder="问点什么…（Enter 发送，Shift + Enter 换行）"
-            aria-label="输入问题"></textarea>
-          <button class="send-btn" id="sendBtn" type="submit" aria-label="发送问题">
+            placeholder="描述制度、流程或业务问题…"
+            aria-label="输入业务问题"></textarea>
+          <button class="send-btn" id="sendBtn" type="submit" aria-label="提交核验">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 19V5m0 0l-6 6m6-6l6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </form>
         <div class="composer-meta">
-          <span id="composerHint">检索 top 4 · 流式回答</span>
-          <span class="demo-hint" id="demoHint" hidden>演示模式：未连接后端</span>
+          <span id="composerHint">Enter 提交 · Shift + Enter 换行 · 证据召回 4 段</span>
+          <span class="demo-hint" id="demoHint" hidden>演示工作区：未连接知识服务</span>
         </div>
       </footer>
     </main>
@@ -104,18 +135,18 @@
 
   <div class="popover" id="settingsPop" hidden>
     <div class="popover-head">
-      <strong>检索设置</strong>
+      <strong>证据设置</strong>
       <button class="icon-btn" id="settingsClose" aria-label="关闭设置">×</button>
     </div>
     <label class="setting-row">
-      <span>召回片段数 <em id="topKValue">4</em></span>
+      <span>证据召回量 <em id="topKValue">4</em></span>
       <input type="range" id="topK" min="1" max="8" step="1" value="4">
     </label>
     <label class="setting-row check-row">
       <input type="checkbox" id="showSources" checked>
-      <span>显示引用来源</span>
+      <span>展开证据来源</span>
     </label>
-    <p class="setting-note">片段越多上下文越全，但 token 成本也越高。</p>
+    <p class="setting-note">提高召回量会扩展可参考片段，但不代表结论一定更准确。核验仍以原文证据为准。</p>
   </div>
 
   <div class="toast-stack" id="toasts" aria-live="polite"></div>

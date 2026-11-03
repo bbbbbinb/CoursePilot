@@ -42,9 +42,9 @@
   };
 
   const STORAGE = {
-    docs: "coursepilot.docs.v1",
-    session: "coursepilot.session.v1",
-    settings: "coursepilot.settings.v1",
+    docs: "zhiheng.docs.v1",
+    session: "zhiheng.session.v1",
+    settings: "zhiheng.settings.v1",
   };
 
   const savedDocs = readJSON(STORAGE.docs, []);
@@ -61,81 +61,111 @@
   };
 
   const demoDocs = [
-    { id: "demo-1", name: "数据结构_第08章_递归.pdf", pages: 24, chunks: 71, status: "ready", demo: true },
-    { id: "demo-2", name: "数据结构_实验05_树.pdf", pages: 18, chunks: 52, status: "ready", demo: true },
-    { id: "demo-3", name: "期中复习提纲.md", pages: 1, chunks: 29, status: "ready", demo: true },
+    { id: "demo-1", name: "集团差旅与费用报销制度_v3.2.pdf", pages: 18, chunks: 64, status: "ready", demo: true },
+    { id: "demo-2", name: "大客户报价与折扣审批流程.md", pages: 6, chunks: 24, status: "ready", demo: true },
+    { id: "demo-3", name: "对外合同法律审核管理办法.pdf", pages: 14, chunks: 51, status: "ready", demo: true },
+    { id: "demo-4", name: "信息安全事件响应SOP.txt", pages: 9, chunks: 31, status: "ready", demo: true },
   ];
 
   const mockSources = {
-    recursion: [
+    travel: [
       {
         index: 1,
-        file_name: "数据结构_第08章_递归.pdf",
-        page: 12,
-        snippet: "递归函数通过调用自身来分解问题，每一层调用的局部变量保存在调用栈中。",
+        file_name: "集团差旅与费用报销制度_v3.2.pdf",
+        page: 6,
+        snippet: "员工出差住宿费按目的地城市等级执行限额标准：一线城市每人每晚不超过 650 元，其他城市不超过 450 元。",
       },
       {
         index: 2,
-        file_name: "数据结构_第08章_递归.pdf",
-        page: 15,
-        snippet: "迭代使用循环和显式状态推进，避免调用栈开销，适合处理大规模数据。",
+        file_name: "集团差旅与费用报销制度_v3.2.pdf",
+        page: 9,
+        snippet: "住宿费报销须提供酒店发票和入住明细。超过住宿标准的部分原则上由个人承担，特殊情况需提前获得直属负责人审批。",
       },
     ],
-    exam: [
+    discount: [
       {
         index: 1,
-        file_name: "期中复习提纲.md",
-        page: 1,
-        snippet: "重点：递归与迭代的转换、树的前中后序遍历、时间复杂度分析、常见排序算法稳定性。",
+        file_name: "大客户报价与折扣审批流程.md",
+        page: 4,
+        snippet: "标准折扣区间内由销售负责人审批；低于标准折扣下限的报价，须经财务测算并由事业部总经理审批。",
       },
       {
         index: 2,
-        file_name: "数据结构_第08章_递归.pdf",
-        page: 3,
-        snippet: "掌握递归三要素：基准情形、递归关系、向基准情形收敛。",
+        file_name: "大客户报价与折扣审批流程.md",
+        page: 5,
+        snippet: "涉及非标准付款条件、长期价格锁定或排他条款的折扣申请，应在合同签署前提交法务复核。",
       },
     ],
-    plan: [
+    contract: [
       {
         index: 1,
-        file_name: "期中复习提纲.md",
-        page: 1,
-        snippet: "建议按「概念回顾 → 手写代码 → 错题复盘」三轮推进，每天保留一次限时练习。",
+        file_name: "对外合同法律审核管理办法.pdf",
+        page: 7,
+        snippet: "涉及知识产权许可、数据出境、排他条款、责任上限调整或非标准争议解决的对外合同，必须提交法务复核。",
+      },
+      {
+        index: 2,
+        file_name: "对外合同法律审核管理办法.pdf",
+        page: 8,
+        snippet: "业务部门应在合同签署前至少预留三个工作日提交法务审核，不得以客户要求紧急为由先签后审。",
+      },
+    ],
+    security: [
+      {
+        index: 1,
+        file_name: "信息安全事件响应SOP.txt",
+        page: 2,
+        snippet: "发现疑似数据泄露、账号失陷或核心系统不可用后，应在 30 分钟内报告信息安全响应负责人。",
+      },
+      {
+        index: 2,
+        file_name: "信息安全事件响应SOP.txt",
+        page: 6,
+        snippet: "重大信息安全事件应在 2 小时内形成首份事件简报，并同步业务负责人、法务和公共关系团队。",
       },
     ],
     generic: [
       {
         index: 1,
-        file_name: "数据结构_第08章_递归.pdf",
-        page: 8,
-        snippet: "本章从递归定义出发，讨论递归与迭代在状态保存和空间开销上的差异。",
+        file_name: "对外合同法律审核管理办法.pdf",
+        page: 7,
+        snippet: "本段内容涉及对外业务文件中的审核要求、职责边界和提交时点，需要结合具体业务场景进一步确认。",
       },
     ],
   };
 
   const mockAnswers = {
-    recursion: `递归和迭代都是重复执行逻辑的方式，区别在于**由谁保存中间状态**。
+    travel: `员工出差住宿需同时满足**城市等级标准**和**凭证要求** [1]。
 
-- **递归**：函数调用自身，每一层的局部变量和返回位置保存在调用栈里 [1]。写法贴近数学定义，但深度受限，空间开销是 O(n)。
-- **迭代**：用循环变量和可变状态推进 [2]。没有额外调用栈，通常更适合大规模数据。
+- **住宿限额**：一线城市每人每晚不超过 650 元，其他城市不超过 450 元。
+- **报销材料**：必须提供酒店发票和入住明细 [2]。
+- **超标处理**：超出标准的部分原则上由个人承担；确有特殊情况，应提前取得直属负责人审批。
 
-所以判断标准不是“谁更高级”，而是问题是否能自然分解成同构子问题。能自然分解时递归更清晰，否则优先迭代。`,
-    exam: `根据复习提纲，这门课的重点集中在四块 [1]：
+建议在预订前确认目的地对应的城市等级，并保留完整入住凭证，避免报销时发生口径争议。`,
+    discount: `客户申请非标折扣需要走正式审批，不应由销售人员在客户侧直接承诺 [1]：
 
-1. **递归与迭代的相互转换**，尤其是尾递归改写。
-2. **树的前序、中序、后序遍历**，能手写非递归版本。
-3. **时间复杂度分析**，包括最好、最坏和平均情况。
-4. **排序算法的稳定性与原地性**，常考比较题。
+1. 客户经理提交折扣申请、客户背景和预计成交规模。
+2. 标准折扣区间内，由销售负责人审批。
+3. 低于标准折扣下限时，由财务完成测算，并提交事业部总经理审批。
+4. 如同时涉及非标准付款条件、长期价格锁定或排他条款，合同签署前还需提交法务复核 [2]。
 
-复习时建议先把递归三要素写熟：基准情形、递归关系、向基准情形收敛 [2]。`,
-    plan: `可以按三轮推进，每轮都产出可检查的东西 [1]：
+最终对外报价应以审批通过的版本为准。`,
+    contract: `以下对外合同必须提交法务复核 [1]：
 
-- **第 1–2 天**：过一遍概念，给每个知识点写一句自己的解释。
-- **第 3–5 天**：手写遍历和递归题，不看答案，记录卡住的步骤。
-- **第 6–7 天**：限时做一套题，整理错题，再回看对应讲义页码。
+- 涉及知识产权许可或权利归属调整；
+- 涉及数据出境、共享或委托处理；
+- 包含排他合作、最惠待遇等特殊商业条款；
+- 调整责任上限、赔偿范围或采用非标准争议解决方式。
 
-每天留 30 分钟复盘，比单纯延长学习时间更有效。`,
-    fallback: `我在已索引的资料里找到一段相关内容 [1]。它讨论的是本章的核心概念与适用场景。如果你能把问题再具体一点，比如指出想了解的算法或章节，我可以检索更精确的片段。`,
+业务部门应在签署前至少预留 **三个工作日** 提交法务审核，不得先签后审 [2]。`,
+    security: `发现疑似信息安全事件后，应立即启动报告流程 [1]：
+
+1. **30 分钟内**报告信息安全响应负责人。
+2. 保留日志、截图和相关账号信息，不要在未经指示时自行删除或覆盖数据。
+3. 重大事件应在 **2 小时内**形成首份事件简报，并同步业务负责人、法务和公共关系团队 [2]。
+
+如果无法判断事件等级，按更高等级先报告，再由响应团队完成定级。`,
+    fallback: `我在已入库资料中找到一段可能相关的内容 [1]。不过当前证据不足以直接形成确定结论，建议补充更具体的制度名称、业务场景或时间范围后重新核验。`,
   };
 
   /* ---------------- boot ---------------- */
@@ -204,7 +234,7 @@
     el.suggestions.addEventListener("click", (event) => {
       const button = event.target.closest(".suggestion");
       if (!button) return;
-      el.input.value = button.textContent.trim();
+      el.input.value = button.dataset.question || button.textContent.trim();
       autoGrow();
       submitQuestion();
     });
@@ -220,7 +250,7 @@
     el.topK.addEventListener("input", () => {
       state.settings.topK = Number(el.topK.value);
       el.topKValue.textContent = String(state.settings.topK);
-      el.composerHint.textContent = `检索 top ${state.settings.topK} · 流式回答`;
+      el.composerHint.textContent = `Enter 提交 · Shift + Enter 换行 · 证据召回 ${state.settings.topK} 段`;
       writeJSON(STORAGE.settings, state.settings);
     });
 
@@ -280,7 +310,7 @@
       if (!response.ok) throw new Error("backend unavailable");
       state.online = true;
       el.healthDot.className = "status-dot is-online";
-      el.healthText.textContent = "后端已连接";
+      el.healthText.textContent = "知识服务已连接";
       el.demoHint.hidden = true;
     } catch {
       enterDemoMode();
@@ -290,7 +320,7 @@
   function enterDemoMode() {
     state.online = false;
     el.healthDot.className = "status-dot is-demo";
-    el.healthText.textContent = "演示模式（未连接后端）";
+    el.healthText.textContent = "演示工作区（未连接知识服务）";
     el.demoHint.hidden = false;
     if (state.docs.length === 0) {
       state.docs = demoDocs.slice();
@@ -302,7 +332,7 @@
 
   function renderDocs() {
     el.docList.innerHTML = "";
-    el.docCount.textContent = `${state.docs.length} 份`;
+    el.docCount.textContent = `${state.docs.length} 份资料`;
     el.docEmpty.hidden = state.docs.length > 0;
 
     for (const doc of state.docs) {
@@ -364,7 +394,7 @@
           chunks: result.chunks || result.chunk_count || "—",
           demo: false,
         });
-        toast(`${file.name} 已入库`);
+        toast(`${file.name} 已加入资料空间`);
       } catch (error) {
         state.docs = state.docs.filter((item) => item.id !== doc.id);
         toast(`上传失败：${error.message}`, true);
@@ -429,7 +459,7 @@
     doc.chunks = doc.pages * 3 + Math.floor(Math.random() * 8);
     doc.progress = 100;
     renderDocs();
-    toast(`演示模式：${doc.name} 已加入列表`);
+    toast(`演示工作区：${doc.name} 已加入资料空间`);
   }
 
   function persistDocs() {
@@ -460,9 +490,10 @@
       }
     } catch (error) {
       ai.answerEl.classList.remove("is-streaming");
-      ai.statusEl.textContent = "请求失败";
-      ai.answerEl.innerHTML = `<div class="refusal"><div><strong>这次请求没有成功</strong>${escapeHtml(error.message || "未知错误")}</div></div>`;
-      toast(error.message || "请求失败", true);
+      ai.statusEl.textContent = "核验中断";
+      ai.answerEl.innerHTML = `<div class="refusal"><div><strong>本次核验未完成</strong>${escapeHtml(error.message || "未知错误")}</div></div>`;
+      setVerification(ai, { status: "error" });
+      toast(error.message || "核验请求失败", true);
     } finally {
       setBusy(false);
       scrollToBottom(true);
@@ -487,12 +518,12 @@
       throw new Error("当前浏览器不支持流式响应");
     }
 
-    ai.statusEl.textContent = "检索资料…";
+    ai.statusEl.textContent = "正在检索企业资料…";
 
     await readSSE(response.body, {
       meta(data) {
         if (data.session_id) setSession(data.session_id);
-        ai.statusEl.textContent = "生成中…";
+        ai.statusEl.textContent = "正在组织答复…";
       },
       status(data) {
         if (data.message) ai.statusEl.textContent = data.message;
@@ -502,7 +533,7 @@
       },
       token(data) {
         ai.raw += data.text || data.content || "";
-        ai.statusEl.textContent = "生成中…";
+        ai.statusEl.textContent = "正在组织答复…";
         scheduleRender(ai);
       },
       replace(data) {
@@ -517,7 +548,11 @@
         const seconds = Number(data.latency_ms) > 0
           ? ` · ${(Number(data.latency_ms) / 1000).toFixed(1)}s`
           : "";
-        ai.statusEl.textContent = `完成${seconds}`;
+        ai.statusEl.textContent = `核验完成${seconds}`;
+        setVerification(ai, {
+          status: ai.sources.length ? "complete" : "no-evidence",
+          latencyMs: Number(data.latency_ms) || 0,
+        });
       },
       error(data) {
         throw new Error(data.message || "后端处理失败");
@@ -529,7 +564,7 @@
   }
 
   async function mockAnswer(question, ai) {
-    ai.statusEl.textContent = "检索资料…";
+    ai.statusEl.textContent = "正在检索企业资料…";
     await sleep(520);
 
     const matched = pickMock(question);
@@ -537,12 +572,12 @@
     await sleep(340);
 
     if (matched.refusal) {
-      ai.statusEl.textContent = "已拒答";
+      ai.statusEl.textContent = "已停止推断";
       renderRefusal(ai, matched.refusal);
       return;
     }
 
-    ai.statusEl.textContent = "生成中…";
+    ai.statusEl.textContent = "正在组织答复…";
     ai.answerEl.classList.add("is-streaming");
 
     const text = matched.text;
@@ -554,23 +589,27 @@
 
     ai.answerEl.classList.remove("is-streaming");
     renderAnswer(ai);
-    ai.statusEl.textContent = "完成 · 演示";
+    ai.statusEl.textContent = "核验完成 · 演示";
+    setVerification(ai, { status: "complete" });
   }
 
   function pickMock(question) {
-    if (/天气|股票|新闻|明天几点|杭州.*房价/.test(question)) {
+    if (/天气|股票|新闻|明天几点|房价|汇率/.test(question)) {
       return {
-        refusal: "这类问题不在已索引的课程资料中。当前知识库只包含数据结构相关的讲义与复习提纲，建议先补充对应资料。",
+        refusal: "这类问题不在当前企业资料空间内。请补充对应的制度、流程或业务文件后再进行核验。",
       };
     }
-    if (/递归|迭代|调用栈/.test(question)) {
-      return { text: mockAnswers.recursion, sources: mockSources.recursion };
+    if (/差旅|住宿|报销|出差/.test(question)) {
+      return { text: mockAnswers.travel, sources: mockSources.travel };
     }
-    if (/考试|重点|考什么|提纲/.test(question)) {
-      return { text: mockAnswers.exam, sources: mockSources.exam };
+    if (/折扣|报价|非标|审批路径/.test(question)) {
+      return { text: mockAnswers.discount, sources: mockSources.discount };
     }
-    if (/计划|复习|安排/.test(question)) {
-      return { text: mockAnswers.plan, sources: mockSources.plan };
+    if (/合同|法务|条款|采购/.test(question)) {
+      return { text: mockAnswers.contract, sources: mockSources.contract };
+    }
+    if (/信息安全|安全事件|应急|上报|事故/.test(question)) {
+      return { text: mockAnswers.security, sources: mockSources.security };
     }
     return { text: mockAnswers.fallback, sources: mockSources.generic };
   }
@@ -580,7 +619,7 @@
     article.className = "msg msg-user";
     article.innerHTML = `
       <div class="msg-body"><div class="bubble"></div></div>
-      <div class="avatar" aria-hidden="true">我</div>`;
+      <div class="avatar" aria-hidden="true">问</div>`;
     article.querySelector(".bubble").textContent = text;
     el.messages.appendChild(article);
     scrollToBottom(true);
@@ -590,15 +629,16 @@
     const article = document.createElement("article");
     article.className = "msg msg-assistant";
     article.innerHTML = `
-      <div class="avatar" aria-hidden="true">C</div>
+      <div class="avatar" aria-hidden="true">衡</div>
       <div class="msg-body">
         <div class="msg-meta">
-          <span>课程助教</span>
-          <span class="msg-status">正在思考…</span>
+          <span>知识核验助手</span>
+          <span class="msg-status">正在核验…</span>
         </div>
         <div class="answer is-streaming" aria-live="polite">
-          <div class="typing" aria-label="正在生成"><i></i><i></i><i></i></div>
+          <div class="typing" aria-label="正在核验"><i></i><i></i><i></i></div>
         </div>
+        <div class="verification-bar" hidden></div>
         <div class="sources" hidden></div>
       </div>`;
 
@@ -609,6 +649,7 @@
       article,
       answerEl: article.querySelector(".answer"),
       statusEl: article.querySelector(".msg-status"),
+      verificationEl: article.querySelector(".verification-bar"),
       sourcesEl: article.querySelector(".sources"),
       raw: "",
       sources: [],
@@ -624,8 +665,36 @@
       index: Number(source.index) || index + 1,
     }));
     ai.sourceMap = new Map(ai.sources.map((source) => [source.index, source]));
+    if (ai.sources.length) setVerification(ai, { status: "evidence" });
     renderSources(ai);
     renderAnswer(ai);
+  }
+
+  function setVerification(ai, { status = "evidence", latencyMs = 0 } = {}) {
+    if (!ai.verificationEl) return;
+
+    const count = ai.sources.length;
+    const time = latencyMs > 0 ? `${(latencyMs / 1000).toFixed(1)}s` : "";
+    ai.verificationEl.hidden = false;
+    ai.verificationEl.className = "verification-bar";
+
+    if (status === "refusal" || status === "no-evidence" || status === "error") {
+      ai.verificationEl.classList.add("is-warning");
+      const text = status === "error"
+        ? "本次未形成核验结果"
+        : "依据不足 · 需补充资料或人工确认";
+      ai.verificationEl.innerHTML = `
+        <span class="verification-label">核验状态</span>
+        <span>${text}</span>
+        <span class="verification-time">${status === "error" ? "已中断" : "已停止推断"}</span>`;
+      return;
+    }
+
+    const label = status === "complete" ? "核验完成" : "已建立证据链";
+    ai.verificationEl.innerHTML = `
+      <span class="verification-label">${label}</span>
+      <span>${count} 条原文依据 · 编号可追溯</span>
+      <span class="verification-time">${time || "证据已就绪"}</span>`;
   }
 
   function scheduleRender(ai) {
@@ -673,8 +742,8 @@
 
     ai.sourcesEl.innerHTML = `
       <button class="sources-head" type="button" aria-expanded="true">
-        <span>引用来源</span>
-        <span>· ${ai.sources.length}</span>
+        <span>证据链</span>
+        <span>· ${ai.sources.length} 条可追溯依据</span>
         <span class="chevron">▾</span>
       </button>
       <ol class="source-list">
@@ -688,9 +757,10 @@
     ai.answerEl.innerHTML = "";
     const node = document.createElement("div");
     node.className = "refusal";
-    node.innerHTML = `<div><strong>资料中未找到依据</strong>${escapeHtml(reason)}</div>`;
+    node.innerHTML = `<div><strong>依据不足，已停止推断</strong>${escapeHtml(reason)}</div>`;
     ai.answerEl.appendChild(node);
     ai.refusalEl = node;
+    setVerification(ai, { status: "refusal" });
     scrollToBottom();
   }
 
@@ -862,7 +932,7 @@
   }
 
   function updateSessionLabel() {
-    el.sessionLabel.textContent = `会话 ${state.sessionId.slice(0, 8)} · 资料会作为上下文`;
+    el.sessionLabel.textContent = `核验 #${state.sessionId.slice(0, 8)} · 仅基于已入库资料`;
   }
 
   function autoGrow() {
@@ -911,7 +981,7 @@
     el.topK.value = String(state.settings.topK);
     el.topKValue.textContent = String(state.settings.topK);
     el.showSources.checked = state.settings.showSources !== false;
-    el.composerHint.textContent = `检索 top ${state.settings.topK} · 流式回答`;
+    el.composerHint.textContent = `Enter 提交 · Shift + Enter 换行 · 证据召回 ${state.settings.topK} 段`;
   }
 
   function toast(message, isError = false) {
