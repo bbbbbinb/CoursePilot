@@ -174,7 +174,7 @@ def test_chat_streams_refusal_and_done(monkeypatch) -> None:
         allow_web: bool,
     ):
         yield "sources", {"sources": []}
-        yield "refusal", {"reason": "课程资料不足以回答该问题。"}
+        yield "refusal", {"reason": "企业资料不足以回答该问题。"}
 
     monkeypatch.setattr(routes, "stream_agent_answer", fake_stream)
 
@@ -194,7 +194,7 @@ def test_chat_streams_refusal_and_done(monkeypatch) -> None:
         "refusal",
         "done",
     ]
-    assert events[2][1] == {"reason": "课程资料不足以回答该问题。"}
+    assert events[2][1] == {"reason": "企业资料不足以回答该问题。"}
 
 
 def test_chat_returns_error_without_done_when_generation_fails(

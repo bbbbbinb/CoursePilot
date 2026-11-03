@@ -28,7 +28,7 @@ from app.agents.state import CourseTutorState
 
 
 def build_course_tutor_graph(*, checkpointer: Any = None):
-    """构建 Supervisor 编排的课程 Agent 图。"""
+    """构建 Supervisor 编排的企业知识核验 Agent 图。"""
     builder = StateGraph(CourseTutorState)
 
     builder.add_node("prepare_turn", prepare_turn_node)

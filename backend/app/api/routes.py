@@ -153,7 +153,7 @@ async def upload_document(file: UploadFile = File(...)) -> DocumentUploadRespons
 
 @router.post("/chat")
 async def chat(body: ChatRequest) -> StreamingResponse:
-    """基于课程知识库流式生成回答。"""
+    """基于企业资料库流式生成核验回答。"""
     settings = get_settings()
     effective_top_k = body.top_k or settings.top_k
     allow_web = settings.web_search_enabled and body.allow_web is not False

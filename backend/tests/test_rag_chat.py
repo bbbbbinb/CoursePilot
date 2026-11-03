@@ -12,7 +12,7 @@ def make_result(*, sufficient: bool) -> RetrievalResult:
         return RetrievalResult(
             question="明天杭州天气怎么样？",
             hits=[],
-            reason="检索到的课程片段相关性不足，无法据此回答。",
+            reason="检索到的企业资料相关性不足，无法据此回答。",
         )
 
     document = Document(
@@ -69,7 +69,9 @@ def test_stream_rag_answer_emits_sources_then_tokens(monkeypatch) -> None:
         "递归关系决定如何缩小问题。 [1]"
     )
     assert model.messages[0].type == "system"
+    assert "知衡" in model.messages[0].content
     assert "只能依据" in model.messages[0].content
+    assert "企业资料" in model.messages[0].content
     assert "递归函数需要基准情形和递归关系。" in model.messages[1].content
     assert "递归为什么需要基准情形？" in model.messages[1].content
 

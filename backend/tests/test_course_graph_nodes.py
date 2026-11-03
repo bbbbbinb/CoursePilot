@@ -28,7 +28,7 @@ def make_retrieval(*, sufficient: bool) -> RetrievalResult:
         return RetrievalResult(
             question="测试问题",
             hits=[],
-            reason="课程资料不足以回答该问题。",
+            reason="企业资料不足以回答该问题。",
         )
 
     document = Document(
@@ -117,7 +117,7 @@ def test_route_helpers() -> None:
 def test_direct_route_does_not_retrieve(monkeypatch) -> None:
     model = FakeChatModel(
         SupervisorDecision(route="direct", resolved_query="你好"),
-        "你好，我是 CoursePilot。",
+        "你好，我是知衡。",
     )
     monkeypatch.setattr(nodes, "get_chat_model", lambda: model)
     monkeypatch.setattr(
@@ -140,9 +140,11 @@ def test_direct_route_does_not_retrieve(monkeypatch) -> None:
         )
     )
 
-    assert result["answer"] == "你好，我是 CoursePilot。"
+    assert result["answer"] == "你好，我是知衡。"
     assert isinstance(result["messages"][-1], AIMessage)
-    assert result["messages"][-1].content == "你好，我是 CoursePilot。"
+    assert result["messages"][-1].content == "你好，我是知衡。"
+    assert "知衡" in model.answer_calls[0][0].content
+    assert "不得自称 CoursePilot" in model.answer_calls[0][0].content
 
 
 def test_clarify_route_streams_question_without_retrieval(monkeypatch) -> None:
@@ -253,7 +255,7 @@ def test_insufficient_course_evidence_refuses_without_web(monkeypatch) -> None:
         )
     )
 
-    assert result["answer"] == "课程资料不足以回答该问题。"
+    assert result["answer"] == "企业资料不足以回答该问题。"
     assert model.answer_calls == []
 
 
@@ -347,7 +349,7 @@ def test_sqlite_checkpointer_restores_message_history(
 ) -> None:
     model = FakeChatModel(
         SupervisorDecision(route="direct", resolved_query="你好"),
-        "你好，我是 CoursePilot。",
+        "你好，我是知衡。",
     )
     monkeypatch.setattr(nodes, "get_chat_model", lambda: model)
 
@@ -383,7 +385,7 @@ def test_sqlite_checkpointer_restores_message_history(
 
     second_structured_prompt = model.structured_calls[-1][1].content
     assert "你好" in second_structured_prompt
-    assert "你好，我是 CoursePilot。" in second_structured_prompt
+    assert "你好，我是知衡。" in second_structured_prompt
 
 
 def test_empty_mcp_config_is_treated_as_disabled() -> None:

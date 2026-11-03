@@ -7,8 +7,8 @@ from app.api.routes import router as api_router
 from app.core.config import PROJECT_ROOT
 
 app = FastAPI(
-    title="CoursePilot API",
-    description="课程知识库 Agent 助教后端",
+    title="Zhiheng API",
+    description="知衡企业制度与流程核验台后端",
     version="0.1.0",
 )
 

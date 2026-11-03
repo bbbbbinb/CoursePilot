@@ -29,10 +29,10 @@ class FakeGraph:
             queue.put_nowait(
                 (
                     "refusal",
-                    {"reason": "检索到的课程片段相关性不足，无法据此回答。"},
+                    {"reason": "检索到的企业资料相关性不足，无法据此回答。"},
                 )
             )
-            return {"answer": "检索到的课程片段相关性不足，无法据此回答。"}
+            return {"answer": "检索到的企业资料相关性不足，无法据此回答。"}
 
         queue.put_nowait(("sources", {"sources": [SOURCE]}))
         answer = (
@@ -45,7 +45,7 @@ class FakeGraph:
         if self.invalid_citation:
             queue.put_nowait(("replace", {"text": "递归需要基准情形。"}))
             queue.put_nowait(
-                ("refusal", {"reason": "课程资料不足以回答该问题。"})
+                ("refusal", {"reason": "企业资料不足以回答该问题。"})
             )
 
         return {"answer": answer}
@@ -95,7 +95,7 @@ def test_stream_agent_answer_refuses_when_evidence_is_insufficient(
     assert [name for name, _ in events] == ["sources", "refusal"]
     assert events[0][1] == {"sources": []}
     assert events[1][1] == {
-        "reason": "检索到的课程片段相关性不足，无法据此回答。"
+        "reason": "检索到的企业资料相关性不足，无法据此回答。"
     }
 
 

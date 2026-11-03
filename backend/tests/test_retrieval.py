@@ -66,7 +66,7 @@ def test_retrieve_documents_refuses_when_all_candidates_are_too_distant() -> Non
     assert result.hits == []
     assert result.sources == []
     assert result.context == ""
-    assert result.reason == "检索到的课程片段相关性不足，无法据此回答。"
+    assert result.reason == "检索到的企业资料相关性不足，无法据此回答。"
 
 
 class EmptyVectorStore:
@@ -82,4 +82,4 @@ def test_retrieve_documents_refuses_empty_knowledge_base() -> None:
     )
 
     assert result.is_sufficient is False
-    assert result.reason == "课程资料中没有找到相关内容。"
+    assert result.reason == "企业资料中没有找到相关内容。"

@@ -41,7 +41,7 @@ class RetrievalResult:
 
     @property
     def context(self) -> str:
-        """生成带稳定编号的课程上下文。"""
+        """生成带稳定编号的企业资料上下文。"""
         blocks: list[str] = []
 
         for hit in self.hits:
@@ -107,7 +107,7 @@ def retrieve_documents(
     max_distance: float | None = None,
     vector_store: VectorStore | None = None,
 ) -> RetrievalResult:
-    """检索课程片段，并按距离过滤掉明显不相关的候选。"""
+    """检索企业资料片段，并按距离过滤掉明显不相关的候选。"""
     question = question.strip()
     if not question:
         raise ValueError("检索问题不能为空")
@@ -151,9 +151,9 @@ def retrieve_documents(
     reason = None
     if not hits:
         reason = (
-            "课程资料中没有找到相关内容。"
+            "企业资料中没有找到相关内容。"
             if not candidates
-            else "检索到的课程片段相关性不足，无法据此回答。"
+            else "检索到的企业资料相关性不足，无法据此回答。"
         )
 
     return RetrievalResult(question=question, hits=hits, reason=reason)
